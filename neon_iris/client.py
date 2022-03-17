@@ -74,7 +74,8 @@ class NeonAIClient:
         self._connection.stop()
 
     def _play_audio(self, audio_file: str):
-        subprocess.Popen(["mpg123", audio_file],
+        playback_cmd = "mpg123" if audio_file.endswith(".mp3") else "paplay"
+        subprocess.Popen([playback_cmd, audio_file],
                          stdout=subprocess.DEVNULL,
                          stderr=subprocess.DEVNULL).wait()
 
