@@ -36,7 +36,7 @@ from neon_iris.version import __version__
 
 
 @click.group("iris", cls=DefaultGroup,
-             no_args_is_help=False, invoke_without_command=True,
+             no_args_is_help=True, invoke_without_command=True,
              help="Iris: Interactive Relay for Intelligence Systems.\n\n"
                   "See also: mana COMMAND --help")
 @click.option("--version", "-v", is_flag=True, required=False,
@@ -44,8 +44,6 @@ from neon_iris.version import __version__
 def neon_iris_cli(version: bool = False):
     if version:
         click.echo(f"Iris version {__version__}")
-    else:
-        start_client(None, None, "en-us")
 
 
 @neon_iris_cli.command(help="Create an MQ client session")
@@ -55,7 +53,9 @@ def neon_iris_cli(version: bool = False):
               help="Path to User Config file")
 @click.option('--lang', '-l', default="en-us",
               help="Language to accept input in")
-def start_client(mq_config, user_config, lang):
+@click.option('--audio', '-a', is_flag=True, default=False,
+              help="Flag to enable audio playback")
+def start_client(mq_config, user_config, lang, audio):
     if mq_config:
         with open(mq_config) as f:
             try:
@@ -69,16 +69,25 @@ def start_client(mq_config, user_config, lang):
             except Exception as e:
                 user_config = None
     client = NeonAIClient(mq_config, user_config)
+    client.audio_enabled = audio
     click.echo("Enter '!{lang}' to change language\n"
-               "Enter '!quit' to quit.")
+               "Enter '!quit' to quit.\n"
+               "Enter '!mute' or '!unmute' to change audio playback")
     while True:
         query = click.prompt("Query")
         if query.startswith('!'):
             if query == "!quit":
                 break
-            lang = query.split()[0].strip('!')
-            client.user_profiles[0]["speech"]["secondary_tts_language"] = lang
-            click.echo(f"Language set to {lang}")
+            elif query == "!mute":
+                click.echo("Disabling Audio Playback")
+                client.audio_enabled = False
+            elif query == "!unmute":
+                click.echo("Enabling Audio Playback")
+                client.audio_enabled = True
+            else:
+                lang = query.split()[0].strip('!')
+                client.user_profiles[0]["speech"]["secondary_tts_language"] = lang
+                click.echo(f"Language set to {lang}")
         else:
             client.send_request(query, lang)
             # Pad prompt for multiple responses

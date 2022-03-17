@@ -25,9 +25,10 @@
 # SOFTWARE,  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
+import subprocess
+
 from os import makedirs
 from os.path import join, isfile
-
 from pprint import pprint
 from queue import Queue
 from tempfile import gettempdir
@@ -59,6 +60,7 @@ class NeonAIClient:
         self.user_profiles = [user_config]
         self.username = user_config["user"]["username"]
         self.audio_cache_dir = join(gettempdir(), "neon_client")
+        self.audio_enabled = True
         makedirs(self.audio_cache_dir, exist_ok=True)
 
         Thread(target=self._handle_next_request, daemon=True).start()
@@ -70,6 +72,11 @@ class NeonAIClient:
     def shutdown(self):
         self._request_queue.put(None)
         self._connection.stop()
+
+    def _play_audio(self, audio_file: str):
+        subprocess.Popen(["mpg123", audio_file],
+                         stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL).wait()
 
     def handle_neon_response(self, channel, method, _, body):
         channel.basic_ack(delivery_tag=method.delivery_tag)
@@ -88,7 +95,10 @@ class NeonAIClient:
                         decode_base64_string_to_file(data, filepath)
         pprint(sentences)
         pprint(files)
-        print('\n')
+        print()
+        if self.audio_enabled:
+            for file in files:
+                self._play_audio(file)
         self._response_event.set()
 
     def _handle_next_request(self):
