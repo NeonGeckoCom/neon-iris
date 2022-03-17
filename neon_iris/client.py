@@ -29,7 +29,7 @@ import subprocess
 
 from os import makedirs
 from os.path import join, isfile
-from pprint import pprint
+from pprint import pformat
 from queue import Queue
 from tempfile import gettempdir
 from threading import Event, Thread
@@ -81,24 +81,25 @@ class NeonAIClient:
     def handle_neon_response(self, channel, method, _, body):
         channel.basic_ack(delivery_tag=method.delivery_tag)
         response = b64_to_dict(body)
-        resp_data = response["data"]["responses"]
-        files = []
-        sentences = []
-        for lang, response in resp_data.items():
-            sentences.append(response.get("sentence"))
-            if response.get("audio"):
-                for gender, data in response["audio"].items():
-                    filepath = "/".join([self.audio_cache_dir] +
-                                        response[gender].split('/')[-4:])
-                    files.append(filepath)
-                    if not isfile(filepath):
-                        decode_base64_string_to_file(data, filepath)
-        pprint(sentences)
-        pprint(files)
-        print()
-        if self.audio_enabled:
-            for file in files:
-                self._play_audio(file)
+        if response["msg_type"] == "klat.response":
+            resp_data = response["data"]["responses"]
+            files = []
+            sentences = []
+            for lang, response in resp_data.items():
+                sentences.append(response.get("sentence"))
+                if response.get("audio"):
+                    for gender, data in response["audio"].items():
+                        filepath = "/".join([self.audio_cache_dir] +
+                                            response[gender].split('/')[-4:])
+                        files.append(filepath)
+                        if not isfile(filepath):
+                            decode_base64_string_to_file(data, filepath)
+            print(f"{pformat(sentences)}\n{pformat(files)}\n")
+            if self.audio_enabled:
+                for file in files:
+                    self._play_audio(file)
+        else:
+            print(f"Response: {response['data']}\n")
         self._response_event.set()
 
     def _handle_next_request(self):
