@@ -59,7 +59,7 @@ class NeonAIClient:
             json.loads(json.dumps(get_neon_user_config().content))
         self.user_profiles = [user_config]
         self.username = user_config["user"]["username"]
-        self.audio_cache_dir = join(gettempdir(), "neon_client")
+        self.audio_cache_dir = join(gettempdir(), "neon_iris")
         self.audio_enabled = True
         makedirs(self.audio_cache_dir, exist_ok=True)
 
@@ -118,6 +118,8 @@ class NeonAIClient:
         self._request_queue.put((utterance, lang))
         if not self._response_event.wait(30):
             print(f"No repsonse to: {utterance}")
+        while not self._request_queue.empty():
+            self._response_event.wait(30)
 
     def _send_request(self, utterance: str, lang: str):
         message = self._build_message(utterance, lang)
@@ -131,8 +133,10 @@ class NeonAIClient:
                 request_data=serialized)
         except StreamLostError:
             print("Connection closed, attempting to re-establish")
-            self._connection.connection.close()
+            if self._connection.connection.is_open:
+                self._connection.connection.close()
             self._connection = self._init_mq_connection()
+            print("Reconnected, retrying request")
             self._request_queue.put((utterance, lang))
         except Exception as e:
             print(e)
