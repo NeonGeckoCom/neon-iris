@@ -29,7 +29,7 @@
 import fileinput
 from os.path import join, dirname
 
-with open(join(dirname(__file__), "neon_mana_utils", "version.py"),
+with open(join(dirname(__file__), "neon_iris", "version.py"),
           "r", encoding="utf-8") as v:
     for line in v.readlines():
         if line.startswith("__version__"):
@@ -48,7 +48,7 @@ else:
     new_post = int(post) + 1
     version = version.replace(f"a{post}", f"a{new_post}")
 
-for line in fileinput.input(join(dirname(__file__), "neon_mana_utils",
+for line in fileinput.input(join(dirname(__file__), "neon_iris",
                                  "version.py"), inplace=True):
     if line.startswith("__version__"):
         print(f"__version__ = \"{version}\"")
