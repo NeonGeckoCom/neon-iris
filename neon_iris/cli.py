@@ -25,12 +25,14 @@
 # SOFTWARE,  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
+import logging
 from time import sleep
 
 import click
 
 from click_default_group import DefaultGroup
 
+from neon_utils.logger import LOG
 from neon_iris.client import NeonAIClient
 from neon_iris.version import __version__
 
@@ -69,29 +71,34 @@ def start_client(mq_config, user_config, lang, audio):
             except Exception as e:
                 user_config = None
     client = NeonAIClient(mq_config, user_config)
+    LOG.init({"level": logging.WARNING})
+
     client.audio_enabled = audio
     click.echo("Enter '!{lang}' to change language\n"
                "Enter '!quit' to quit.\n"
                "Enter '!mute' or '!unmute' to change audio playback")
-    while True:
-        query = click.prompt("Query")
-        if query.startswith('!'):
-            if query == "!quit":
-                break
-            elif query == "!mute":
-                click.echo("Disabling Audio Playback")
-                client.audio_enabled = False
-            elif query == "!unmute":
-                click.echo("Enabling Audio Playback")
-                client.audio_enabled = True
+    try:
+        while True:
+            query = click.prompt("Query")
+            if query.startswith('!'):
+                if query == "!quit":
+                    break
+                elif query == "!mute":
+                    click.echo("Disabling Audio Playback")
+                    client.audio_enabled = False
+                elif query == "!unmute":
+                    click.echo("Enabling Audio Playback")
+                    client.audio_enabled = True
+                else:
+                    lang = query.split()[0].strip('!')
+                    client.user_profiles[0]["speech"]["secondary_tts_language"] = lang
+                    click.echo(f"Language set to {lang}")
             else:
-                lang = query.split()[0].strip('!')
-                client.user_profiles[0]["speech"]["secondary_tts_language"] = lang
-                click.echo(f"Language set to {lang}")
-        else:
-            client.send_request(query, lang)
-            # Pad prompt for multiple responses
-            sleep(1)
+                client.send_request(query, lang)
+                # Pad prompt for multiple responses
+                sleep(1)
+    except Exception as e:
+        click.echo(e)
     click.echo("Shutting Down Client")
     client.shutdown()
 

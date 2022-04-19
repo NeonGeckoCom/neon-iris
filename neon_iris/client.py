@@ -43,6 +43,7 @@ from neon_utils.configuration_utils import get_neon_user_config, get_neon_local_
 from neon_utils.mq_utils import NeonMQHandler
 from neon_utils.socket_utils import b64_to_dict
 from neon_utils.file_utils import decode_base64_string_to_file
+from neon_utils.logger import LOG
 
 
 class NeonAIClient:
@@ -69,11 +70,27 @@ class NeonAIClient:
     def uid(self):
         return self._uid
 
+    @property
+    def connection(self):
+        if not self._connection.connection.is_open:
+            LOG.warning("Connection closed")
+            self._connection.stop()
+            self._connection = self._init_mq_connection()
+        try:
+            self._connection.connection.channel()
+        except StreamLostError:
+            LOG.warning("Connection unexpectedly closed, recreating")
+            self._connection.stop()
+            self._connection = self._init_mq_connection()
+
+        return self._connection
+
     def shutdown(self):
         self._request_queue.put(None)
         self._connection.stop()
 
-    def _play_audio(self, audio_file: str):
+    @staticmethod
+    def _play_audio(audio_file: str):
         playback_cmd = "mpg123" if audio_file.endswith(".mp3") else "paplay"
         subprocess.Popen([playback_cmd, audio_file],
                          stdout=subprocess.DEVNULL,
@@ -103,6 +120,15 @@ class NeonAIClient:
             print(f"Response: {response['data']}\n")
         self._response_event.set()
 
+    def handle_neon_error(self, channel, method, _, body):
+        response = b64_to_dict(body)
+        if response.get("context").get("routing_key") == self.uid:
+            channel.basic_ack(delivery_tag=method.delivery_tag)
+            LOG.error(response)
+        else:
+            channel.basic_nack(delivery_tag=method.delivery_tag)
+            LOG.debug("Error for other client ignored")
+
     def _handle_next_request(self):
         while True:
             request = self._request_queue.get()
@@ -127,39 +153,35 @@ class NeonAIClient:
                       "data": message.data,
                       "context": message.context}
         try:
-            self._connection.emit_mq_message(
+            self.connection.emit_mq_message(
                 self._connection.connection,
                 queue="neon_chat_api_request",
                 request_data=serialized)
-        except StreamLostError:
-            print("Connection closed, attempting to re-establish")
-            if self._connection.connection.is_open:
-                self._connection.connection.close()
-            self._connection = self._init_mq_connection()
-            print("Reconnected, retrying request")
-            self._request_queue.put((utterance, lang))
         except Exception as e:
-            print(e)
+            LOG.exception(e)
             self.shutdown()
 
     def _build_message(self, utterance: str,
                        lang: str = "en-us",
                        ident: str = None):
         return Message("recognizer_loop:utterance",
-                          {"utterances": [utterance],
-                           "lang": lang},
-                          {"client_name": self.client_name,
-                           "client": self._client,
-                           "ident": ident or str(time()),
-                           "username": self.username,
-                           "user_profiles": self.user_profiles,
-                           "klat": {"routing_key": self.uid}
-                           })
+                       {"utterances": [utterance],
+                        "lang": lang},
+                       {"client_name": self.client_name,
+                        "client": self._client,
+                        "ident": ident or str(time()),
+                        "username": self.username,
+                        "user_profiles": self.user_profiles,
+                        "klat": {"routing_key": self.uid}
+                        })
 
     def _init_mq_connection(self):
         mq_connection = NeonMQHandler(self._config, "mq_handler", self._vhost)
         mq_connection.register_consumer("neon_response_handler", self._vhost,
                                         self.uid, self.handle_neon_response,
                                         auto_ack=False)
-        mq_connection.run_consumers(daemon=True)
+        mq_connection.register_consumer("neon_error_handler", self._vhost,
+                                        "neon_chat_api_error", self.handle_neon_error,
+                                        auto_ack=False)
+        mq_connection.run(daemon=True)
         return mq_connection
