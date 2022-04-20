@@ -26,6 +26,7 @@
 
 import json
 import logging
+from os.path import expanduser, isfile
 from time import sleep
 
 import click
@@ -33,7 +34,7 @@ import click
 from click_default_group import DefaultGroup
 
 from neon_utils.logger import LOG
-from neon_iris.client import NeonAIClient
+from neon_iris.client import CLIClient
 from neon_iris.version import __version__
 
 
@@ -70,7 +71,7 @@ def start_client(mq_config, user_config, lang, audio):
                 user_config = json.load(f)
             except Exception as e:
                 user_config = None
-    client = NeonAIClient(mq_config, user_config)
+    client = CLIClient(mq_config, user_config)
     LOG.init({"level": logging.WARNING})
 
     client.audio_enabled = audio
@@ -90,11 +91,17 @@ def start_client(mq_config, user_config, lang, audio):
                     click.echo("Enabling Audio Playback")
                     client.audio_enabled = True
                 else:
-                    lang = query.split()[0].strip('!')
-                    client.user_profiles[0]["speech"]["secondary_tts_language"] = lang
-                    click.echo(f"Language set to {lang}")
+                    query = query.lstrip('!')
+                    query = expanduser(query)
+                    if isfile(query):
+                        client.send_audio(query, lang, client.username,
+                                          client.user_profiles)
+                    else:
+                        lang = query.split()[0]
+                        client.user_profiles[0]["speech"]["secondary_tts_language"] = lang
+                        click.echo(f"Language set to {lang}")
             else:
-                client.send_request(query, lang)
+                client.send_utterance(query, lang)
                 # Pad prompt for multiple responses
                 sleep(1)
     except Exception as e:
