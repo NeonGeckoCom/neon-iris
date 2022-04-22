@@ -267,8 +267,7 @@ class CLIClient(NeonAIClient):
             self._response_event.wait(30)
 
     def send_audio(self, audio_file: str, lang: str = "en-us",
-                   _=None,
-                   __=None):
+                   _=None, __=None):
         """
         Send an audio file for skills processing
         :param audio_file: Audio File to submit for STT processing
