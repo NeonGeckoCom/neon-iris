@@ -53,7 +53,7 @@ class NeonAIClient:
         self._uid = str(uuid4())
         self._vhost = "/neon_chat_api"
         self._client = "mq_api"
-        self.client_name = "tester"
+        self.client_name = "unknown"
         self._config = mq_config or get_neon_local_config().content.get("MQ")
         self._connection = self._init_mq_connection()
 
@@ -182,6 +182,7 @@ class CLIClient(NeonAIClient):
             json.loads(json.dumps(get_neon_user_config().content))
         self.user_profiles = [user_config]
         self.username = user_config["user"]["username"]
+        self.client_name = "cli"
         self.audio_enabled = True
         self._response_event = Event()
         self._request_queue = Queue()
