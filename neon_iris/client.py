@@ -80,7 +80,20 @@ class NeonAIClient:
         return self._connection
 
     def shutdown(self):
-        self._connection.stop()
+        try:
+            self._connection.stop()
+        except Exception as e:
+            LOG.error(e)
+            try:
+                self._connection.stop_sync_thread()
+            except Exception as x:
+                LOG.exception(x)
+                LOG.error("Sync Thread not shutdown")
+            try:
+                self._connection.stop_consumers()
+            except Exception as x:
+                LOG.exception(x)
+                LOG.error("Consumers not shutdown")
 
     @abstractmethod
     def handle_neon_response(self, channel, method, _, body):
