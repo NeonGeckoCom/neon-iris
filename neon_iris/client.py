@@ -49,7 +49,7 @@ from neon_utils.logger import LOG
 
 
 class NeonAIClient:
-    def __init__(self, mq_config: dict = None, user_config: dict = None):
+    def __init__(self, mq_config: dict = None):
         self._uid = str(uuid4())
         self._vhost = "/neon_chat_api"
         self._client = "mq_api"
@@ -61,11 +61,17 @@ class NeonAIClient:
         makedirs(self.audio_cache_dir, exist_ok=True)
 
     @property
-    def uid(self):
+    def uid(self) -> str:
+        """
+        UID for this client object
+        """
         return self._uid
 
     @property
-    def connection(self):
+    def connection(self) -> NeonMQHandler:
+        """
+        Returns a connected NeonMQHandler object
+        """
         if not self._connection.connection.is_open:
             LOG.warning("Connection closed")
             self._connection.stop()
@@ -80,6 +86,9 @@ class NeonAIClient:
         return self._connection
 
     def shutdown(self):
+        """
+        Cleanly shuts down the MQ connection associated with this client
+        """
         try:
             self._connection.stop()
         except Exception as e:
@@ -256,7 +265,7 @@ class CLIClient(NeonAIClient):
 
     def handle_neon_error(self, channel, method, _, body):
         """
-        Handle and MQ Neon error
+        Handle an MQ Neon error
         """
         response = b64_to_dict(body)
         if response.get("context").get("routing_key") == self.uid:
