@@ -26,8 +26,8 @@
 
 import json
 import subprocess
-from abc import abstractmethod
 
+from abc import abstractmethod
 from os import makedirs
 from os.path import join, isfile
 from pprint import pformat
@@ -138,11 +138,16 @@ class NeonAIClient:
         else:
             LOG.warning(f"Message not handled: {message.msg_type}")
 
-    @abstractmethod
     def handle_neon_error(self, channel, method, _, body):
         """
         Override this method to handle Neon Error Responses
         """
+        response = b64_to_dict(body)
+        if response.get("context").get("routing_key") == self.uid:
+            channel.basic_ack(delivery_tag=method.delivery_tag)
+            message = Message(response.get('msg_type'), response.get('data'),
+                              response.get('context'))
+            self.handle_error_response(message)
 
     @abstractmethod
     def handle_klat_response(self, message: Message):
@@ -160,6 +165,12 @@ class NeonAIClient:
     def handle_api_response(self, message: Message):
         """
         Override this method to handle API method responses (ie neon.get_stt)
+        """
+
+    @abstractmethod
+    def handle_error_response(self, message: Message):
+        """
+        Override this method to handle error responses from Neon
         """
 
     def _handle_profile_update(self, message: Message):
@@ -323,17 +334,11 @@ class CLIClient(NeonAIClient):
                 self._play_audio(file)
         self._response_event.set()
 
-    def handle_neon_error(self, channel, method, _, body):
+    def handle_error_response(self, message: Message):
         """
         Handle an MQ Neon error
         """
-        response = b64_to_dict(body)
-        if response.get("context").get("routing_key") == self.uid:
-            channel.basic_ack(delivery_tag=method.delivery_tag)
-            LOG.error(response)
-        else:
-            channel.basic_nack(delivery_tag=method.delivery_tag)
-            LOG.debug("Error for other client ignored")
+        LOG.error(message.serialize())
 
     def handle_complete_intent_failure(self, message: Message):
         print("No Intent Matched")
