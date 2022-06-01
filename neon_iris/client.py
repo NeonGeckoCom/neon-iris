@@ -385,6 +385,12 @@ class CLIClient(NeonAIClient):
     def handle_api_response(self, message: Message):
         pass
 
+    def clear_caches(self, message: Message):
+        print("Cached Responses Cleared")
+
+    def clear_media(self, message: Message):
+        pass
+
     def send_utterance(self, utterance: str, lang: str = "en-us",
                        _=None, __=None):
         """
