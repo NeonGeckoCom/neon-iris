@@ -25,6 +25,7 @@
 # SOFTWARE,  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
+import shutil
 import subprocess
 
 from abc import abstractmethod
@@ -133,6 +134,8 @@ class NeonAIClient:
             self.handle_complete_intent_failure(message)
         elif message.msg_type == "neon.profile_update":
             self._handle_profile_update(message)
+        elif message.msg_type == "neon.clear_data":
+            self._handle_clear_data(message)
         elif message.msg_type.endswith(".response"):
             self.handle_api_response(message)
         else:
@@ -173,6 +176,18 @@ class NeonAIClient:
         Override this method to handle error responses from Neon
         """
 
+    @abstractmethod
+    def clear_caches(self, message: Message):
+        """
+        Override this method to handle requests to clear caches
+        """
+
+    @abstractmethod
+    def clear_media(self, message: Message):
+        """
+        Override this method to handle requests to clear media (photos, etc)
+        """
+
     def _handle_profile_update(self, message: Message):
         updated_profile = message.data["profile"]
         if updated_profile['user']['username'] == \
@@ -181,6 +196,29 @@ class NeonAIClient:
             LOG.info("Updated user profile")
         else:
             LOG.warning(f"Ignoring update for other user: {updated_profile}")
+
+    def _handle_clear_data(self, message: Message):
+        def _clear_audio_cache():
+            shutil.rmtree(self.audio_cache_dir)
+            makedirs(self.audio_cache_dir, exist_ok=True)
+
+        request_user = message.data.get("username")
+        if request_user != self.user_config['user']['username']:
+            return
+        requested_data = message.data.get("data_to_remove")
+        if "ALL_DATA" in requested_data:
+            _clear_audio_cache()
+            self.clear_caches(message)
+            self.clear_media(message)
+            return
+        if "CACHES" in requested_data:
+            _clear_audio_cache()
+            self.clear_caches(message)
+        if "ALL_MEDIA" in requested_data:
+            self.clear_media(message)
+
+        # (CACHES, PROFILE, ALL_TR, CONF_LIKES, CONF_DISLIKES, ALL_DATA,
+        # ALL_MEDIA, ALL_UNITS, ALL_LANGUAGE
 
     def send_utterance(self, utterance: str, lang: str = "en-us",
                        username: Optional[str] = None,
@@ -345,6 +383,12 @@ class CLIClient(NeonAIClient):
         self._response_event.set()
 
     def handle_api_response(self, message: Message):
+        pass
+
+    def clear_caches(self, message: Message):
+        print("Cached Responses Cleared")
+
+    def clear_media(self, message: Message):
         pass
 
     def send_utterance(self, utterance: str, lang: str = "en-us",
