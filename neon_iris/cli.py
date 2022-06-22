@@ -49,6 +49,46 @@ def neon_iris_cli(version: bool = False):
         click.echo(f"Iris version {__version__}")
 
 
+@neon_iris_cli.command(help="Send a request to get STT")
+@click.option('--mq_config', '-m',
+              help="Path to MQ Config file")
+@click.option('--lang', '-l', default="en-us",
+              help="Language to accept input in")
+@click.option('--file', '-f', default="en-us",
+              help="Path to audio file")
+def get_stt(mq_config, lang, file):
+    if mq_config:
+        with open(mq_config) as f:
+            try:
+                mq_config = json.load(f)
+            except Exception as e:
+                mq_config = None
+    client = CLIClient(mq_config)
+    LOG.init({"level": logging.WARNING})
+    client.handle_stt_request(file, lang)
+    client.shutdown()
+
+
+@neon_iris_cli.command(help="Send a request to get TTS")
+@click.option('--mq_config', '-m',
+              help="Path to MQ Config file")
+@click.option('--lang', '-l', default="en-us",
+              help="Language to accept input in")
+@click.option('--text', '-t',
+              help="Text to synthesize")
+def get_tts(mq_config, lang, text):
+    if mq_config:
+        with open(mq_config) as f:
+            try:
+                mq_config = json.load(f)
+            except Exception as e:
+                mq_config = None
+    client = CLIClient(mq_config)
+    LOG.init({"level": logging.WARNING})
+    client.handle_tts_request(text, lang)
+    client.shutdown()
+
+
 @neon_iris_cli.command(help="Create an MQ client session")
 @click.option('--mq_config', '-m',
               help="Path to MQ Config file")

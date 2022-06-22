@@ -30,12 +30,12 @@ import subprocess
 
 from abc import abstractmethod
 from os import makedirs
-from os.path import join, isfile
+from os.path import join, isfile, expanduser
 from pprint import pformat
 from queue import Queue
 from threading import Event, Thread
 from time import time
-from typing import Optional
+from typing import Optional, Tuple
 from uuid import uuid4
 from mycroft_bus_client import Message
 from pika.exceptions import StreamLostError
@@ -244,6 +244,44 @@ class NeonAIClient:
         """
         self._send_audio(audio_file, lang, username, user_profiles)
 
+    def send_tts_request(self, utterance: str, lang: str = "en-us"):
+        """
+        Send a request for TTS
+        """
+        message_data = {
+            "text": utterance,
+            "utterance": utterance,   # TODO: For MQ Connector Compat.
+            "lang": lang,   # TODO: For MQ Connector Compat.
+            "speaker": {"name": "Neon",
+                        "language": lang,
+                        "gender": "female"}
+        }
+        message = self._build_message("neon.get_tts", message_data)
+        ident = message.context['ident']
+        serialized = {"msg_type": message.msg_type,
+                      "data": message.data,
+                      "context": message.context}
+        self._send_serialized_message(serialized)
+        return ident
+
+    def send_stt_request(self, audio_file: str, lang: str = "en-us"):
+        """
+        Send a request for STT
+        """
+        audio_data = encode_file_to_base64_string(audio_file)
+        message_data = {
+            "audio_data": audio_data,
+            "audio_file": audio_file,  # TODO: For MQ Connector Compat.
+            "lang": lang
+        }
+        message = self._build_message("neon.get_stt", message_data)
+        ident = message.context['ident']
+        serialized = {"msg_type": message.msg_type,
+                      "data": message.data,
+                      "context": message.context}
+        self._send_serialized_message(serialized)
+        return ident
+
     def _build_message(self, msg_type: str, data: dict,
                        username: Optional[str] = None,
                        user_profiles: Optional[list] = None,
@@ -252,7 +290,8 @@ class NeonAIClient:
                        {"client_name": self.client_name,
                         "client": self._client,
                         "ident": ident or str(time()),
-                        "username": username,
+                        "username": username or
+                        self.user_config['user']['username'],
                         "user_profiles": user_profiles or list(),
                         "klat": {"routing_key": self.uid},
                         "klat_data": {"title": "!PRIVATE:Neon"}
@@ -301,6 +340,7 @@ class NeonAIClient:
                                         self.handle_neon_error,
                                         auto_ack=False)
         mq_connection.run(daemon=True)
+        LOG.info(f"Established MQ Connection with config: {self._config}")
         return mq_connection
 
 
@@ -317,6 +357,9 @@ class CLIClient(NeonAIClient):
         self.audio_enabled = True
         self._response_event = Event()
         self._request_queue = Queue()
+        self._api_event = Event()
+        self._pending_stt_requests = list()
+        self._pending_tts_requests = list()
 
         Thread(target=self._handle_next_request, daemon=True).start()
 
@@ -349,15 +392,10 @@ class CLIClient(NeonAIClient):
                                  self.user_profiles)
             self._response_event.wait(30)
 
-    def handle_klat_response(self, message):
-        """
-        Handle an MQ Neon response message.
-        This may include API responses, profile updates, and error responses
-        """
-        resp_data = message.data["responses"]
+    def _handle_response_audio(self, responses: dict) -> Tuple[list, list]:
         files = []
         sentences = []
-        for lang, response in resp_data.items():
+        for lang, response in responses.items():
             sentences.append(response.get("sentence"))
             if response.get("audio"):
                 for gender, data in response["audio"].items():
@@ -366,6 +404,15 @@ class CLIClient(NeonAIClient):
                     files.append(filepath)
                     if not isfile(filepath):
                         decode_base64_string_to_file(data, filepath)
+        return files, sentences
+
+    def handle_klat_response(self, message):
+        """
+        Handle an MQ Neon response message.
+        This may include API responses, profile updates, and error responses
+        """
+        resp_data = message.data["responses"]
+        files, sentences = self._handle_response_audio(resp_data)
         print(f"{pformat(sentences)}\n{pformat(files)}\n")
         if self.audio_enabled:
             for file in files:
@@ -383,7 +430,21 @@ class CLIClient(NeonAIClient):
         self._response_event.set()
 
     def handle_api_response(self, message: Message):
-        pass
+        ident = message.context['ident']
+        if message.data.get("error"):
+            print(f"Error: {message.data}")
+        elif ident in self._pending_stt_requests:
+            self._pending_stt_requests.remove(ident)
+            print(pformat(message.data['transcripts']))
+        elif ident in self._pending_tts_requests:
+            self._pending_tts_requests.remove(ident)
+            files, _ = self._handle_response_audio(message.data)
+            print(pformat(files))
+            for file in files:
+                self._play_audio(file)
+        else:
+            LOG.warning(f"Unexpected response: {message.serialize()}")
+        self._api_event.set()
 
     def clear_caches(self, message: Message):
         print("Cached Responses Cleared")
@@ -416,6 +477,28 @@ class CLIClient(NeonAIClient):
         self._send_audio(audio_file, lang, self.username, self.user_profiles)
         if not self._response_event.wait(30):
             print(f"No response to: {audio_file}")
+
+    def handle_tts_request(self, utterance: str, lang: str = "en-us"):
+        if not utterance:
+            raise ValueError("No utterance provided")
+        lang = lang or "en-us"
+        self._api_event.wait(10)
+        self._api_event.clear()
+        self._pending_tts_requests.append(self.send_tts_request(utterance,
+                                                                lang))
+        self._api_event.wait(60) or print(f"No response to: {utterance}")
+
+    def handle_stt_request(self, file: str, lang: str = "en-us"):
+        if not file:
+            raise ValueError(f"Null file requested")
+        file = expanduser(file)
+        if not isfile(file):
+            raise FileNotFoundError(file)
+        lang = lang or "en-us"
+        self._api_event.wait(10)
+        self._api_event.clear()
+        self._pending_stt_requests.append(self.send_stt_request(file, lang))
+        self._api_event.wait(30) or print(f"No response to: {file}")
 
     def shutdown(self):
         """
