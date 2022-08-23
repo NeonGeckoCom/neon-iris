@@ -35,10 +35,23 @@ from neon_utils.mq_utils import NeonMQHandler
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from neon_iris.client import NeonAIClient, CLIClient
 
+_test_config = {
+    "MQ": {
+        "server": "mq.2022.us",
+        "port": 25672,
+        "users": {
+            "mq_handler": {
+                "user": "neon_api_utils",
+                "password": "Klatchat2021"
+            }
+        }
+    }
+}
+
 
 class TestClient(unittest.TestCase):
     def test_client_create(self):
-        client = NeonAIClient()
+        client = NeonAIClient(_test_config)
         self.assertIsInstance(client.uid, str)
         self.assertTrue(os.path.isdir(client.audio_cache_dir))
         self.assertIsInstance(client.client_name, str)
