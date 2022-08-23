@@ -39,14 +39,14 @@ from typing import Optional
 from uuid import uuid4
 from mycroft_bus_client import Message
 from pika.exceptions import StreamLostError
-from neon_utils.configuration_utils import get_neon_user_config, \
-    get_neon_local_config
+from neon_utils.configuration_utils import get_neon_user_config
 from neon_utils.mq_utils import NeonMQHandler
 from neon_utils.socket_utils import b64_to_dict
 from neon_utils.file_utils import decode_base64_string_to_file, \
     encode_file_to_base64_string
 from neon_utils.logger import LOG
 from ovos_utils.xdg_utils import xdg_config_home, xdg_cache_home
+from ovos_config.config import Configuration
 
 
 class NeonAIClient:
@@ -55,7 +55,7 @@ class NeonAIClient:
         self._vhost = "/neon_chat_api"
         self._client = "mq_api"
         self.client_name = "unknown"
-        self._config = mq_config or get_neon_local_config().content.get("MQ")
+        self._config = mq_config or dict(Configuration()).get("MQ")
         self._connection = self._init_mq_connection()
 
         config_dir = config_dir or join(xdg_config_home(), "neon", "neon_iris")
@@ -254,9 +254,7 @@ class NeonAIClient:
                         "ident": ident or str(time()),
                         "username": username,
                         "user_profiles": user_profiles or list(),
-                        "klat": {"routing_key": self.uid},
-                        "klat_data": {"title": "!PRIVATE:Neon"}
-                        # TODO: klat_data patching bug in neon_utils
+                        "klat_data": {"routing_key": self.uid}
                         })
 
     def _send_utterance(self, utterance: str, lang: str,

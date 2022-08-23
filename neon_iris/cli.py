@@ -26,11 +26,11 @@
 
 import json
 import logging
+import click
+import yaml
+
 from os.path import expanduser, isfile
 from time import sleep
-
-import click
-
 from click_default_group import DefaultGroup
 
 from neon_utils.logger import LOG
@@ -41,7 +41,7 @@ from neon_iris.version import __version__
 @click.group("iris", cls=DefaultGroup,
              no_args_is_help=True, invoke_without_command=True,
              help="Iris: Interactive Relay for Intelligence Systems.\n\n"
-                  "See also: mana COMMAND --help")
+                  "See also: iris COMMAND --help")
 @click.option("--version", "-v", is_flag=True, required=False,
               help="Print the current version")
 def neon_iris_cli(version: bool = False):
@@ -64,7 +64,8 @@ def start_client(mq_config, user_config, lang, audio):
             try:
                 mq_config = json.load(f)
             except Exception as e:
-                mq_config = None
+                f.seek(0)
+                mq_config = yaml.safe_load(f)
     if user_config:
         with open(user_config) as f:
             try:
