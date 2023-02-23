@@ -14,3 +14,4 @@ jobs:
     secrets: inherit
     with:
       version_file: "neon_iris/version.py"
+      setup_py: "setup.py"
