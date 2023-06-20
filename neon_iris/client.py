@@ -290,7 +290,8 @@ class NeonAIClient:
             self.shutdown()
 
     def _init_mq_connection(self):
-        mq_connection = NeonMQHandler(self._config, "mq_handler", self._vhost)
+        mq_config = self._config.get("MQ") or self._config
+        mq_connection = NeonMQHandler(mq_config, "mq_handler", self._vhost)
         mq_connection.register_consumer("neon_response_handler", self._vhost,
                                         self.uid, self.handle_neon_response,
                                         auto_ack=False)
