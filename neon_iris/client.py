@@ -37,7 +37,7 @@ from threading import Event, Thread
 from time import time
 from typing import Optional
 from uuid import uuid4
-from mycroft_bus_client import Message
+from ovos_bus_client.message import Message
 from pika.exceptions import StreamLostError
 from neon_utils.configuration_utils import get_neon_user_config
 from neon_utils.mq_utils import NeonMQHandler

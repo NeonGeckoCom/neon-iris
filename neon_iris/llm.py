@@ -36,7 +36,8 @@ class LLMConversation:
 
     def get_response(self, query: str):
         resp = send_mq_request("/llm", {'query': query,
-                                        'history': self.history}, self.queue)
+                                        'history': self.history}, self.queue,
+                               timeout=90)
         reply = resp.get("response") or ""
         if reply:
             self.history.append(("user", query))
