@@ -172,7 +172,7 @@ def get_wolfram_response(api, unit, latitude, longitude, question):
 
 @neon_iris_cli.command(help="Converse with an LLM")
 @click.option('--llm', default="chat_gpt",
-              help="LLM Queue to interact with")
+              help="LLM Queue to interact with ('chat_gpt' or 'fastchat')")
 def start_llm_chat(llm):
     from neon_iris.llm import LLMConversation
     conversation = LLMConversation(llm)
