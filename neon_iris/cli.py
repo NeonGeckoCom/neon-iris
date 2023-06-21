@@ -114,11 +114,14 @@ def start_client(mq_config, user_config, lang, audio):
               help="location latitude")
 @click.option('--longitude', '--lon', default=-122.2087,
               help="location latitude")
-def get_weather(unit, latitude, longitude):
+@click.option('--api', '-a', default='onecall',
+              help="api to query ('onecall' or 'weather')")
+def get_weather(unit, latitude, longitude, api):
     from neon_iris.util import query_api
     query = {"lat": latitude,
              "lon": longitude,
              "units": unit,
+             "api": api,
              "service": "open_weather_map"}
     resp = query_api(query)
     click.echo(pformat(resp))
