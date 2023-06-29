@@ -192,3 +192,6 @@ def start_llm_chat(llm):
         query = click.prompt(">")
         resp = conversation.get_response(query)
         click.echo(resp)
+
+
+# TODO: Scripts, brands, email, metrics
