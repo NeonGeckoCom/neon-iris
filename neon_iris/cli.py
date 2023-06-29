@@ -42,6 +42,13 @@ environ.setdefault("OVOS_CONFIG_BASE_FOLDER", "neon")
 environ.setdefault("OVOS_CONFIG_FILENAME", "diana.yaml")
 
 
+def _print_config():
+    from ovos_config.config import Configuration
+    config = Configuration().get('MQ')
+    mq_endpoint = f"{config.get('server')}:{config.get('port', 5672)}"
+    click.echo(f"Connecting to {mq_endpoint}")
+
+
 @click.group("iris", cls=DefaultGroup,
              no_args_is_help=True, invoke_without_command=True,
              help="Iris: Interactive Relay for Intelligence Systems.\n\n"
@@ -118,6 +125,7 @@ def start_client(mq_config, user_config, lang, audio):
               help="api to query ('onecall' or 'weather')")
 def get_weather(unit, latitude, longitude, api):
     from neon_iris.util import query_api
+    _print_config()
     query = {"lat": latitude,
              "lon": longitude,
              "units": unit,
@@ -131,6 +139,7 @@ def get_weather(unit, latitude, longitude, api):
 @click.argument('symbol')
 def get_stock_quote(symbol):
     from neon_iris.util import query_api
+    _print_config()
     query = {"symbol": symbol,
              "api": "quote",
              "service": "alpha_vantage"}
@@ -142,6 +151,7 @@ def get_stock_quote(symbol):
 @click.argument('company')
 def get_stock_symbol(company):
     from neon_iris.util import query_api
+    _print_config()
     query = {"company": company,
              "api": "symbol",
              "service": "alpha_vantage"}
@@ -161,6 +171,7 @@ def get_stock_symbol(company):
 @click.argument('question')
 def get_wolfram_response(api, unit, latitude, longitude, question):
     from neon_iris.util import query_api
+    _print_config()
     query = {"api": api,
              "units": unit,
              "latlong": f"{latitude},{longitude}",
@@ -175,6 +186,7 @@ def get_wolfram_response(api, unit, latitude, longitude, question):
               help="LLM Queue to interact with ('chat_gpt' or 'fastchat')")
 def start_llm_chat(llm):
     from neon_iris.llm import LLMConversation
+    _print_config()
     conversation = LLMConversation(llm)
     while True:
         query = click.prompt(">")
