@@ -48,7 +48,45 @@ def load_config_file(file_path: str) -> dict:
 
 
 def query_api(query_params: dict, timeout: int = 10) -> dict:
+    """
+    Query an API service on the `/neon_api` vhost.
+    :param query_params: dict query to send
+    :param timeout: seconds to wait for a response
+    :returns: dict MQ response
+    """
     from neon_mq_connector.utils.client_utils import send_mq_request
-    response = send_mq_request("/neon_api", query_params,
-                               "neon_api_input", "neon_api_output", timeout)
+    response = send_mq_request("/neon_api", query_params, "neon_api_input",
+                               "neon_api_output", timeout)
+    return response
+
+
+def get_brands_coupons(timeout: int = 5) -> dict:
+    """
+    Get brands/coupons data on the `/neon_coupons` vhost.
+    :param timeout: seconds to wait for a response
+    :returns: dict MQ response
+    """
+    from neon_mq_connector.utils.client_utils import send_mq_request
+    response = send_mq_request("/neon_coupons", {}, "neon_coupons_input",
+                               "neon_coupons_output", timeout)
+    return response
+
+
+def parse_ccl_script(script_path: str, metadata: dict = None,
+                     timeout: int = 30) -> dict:
+    """
+    Parse a nct script file into an ncs formatted file
+    :param script_path: path to file to parse
+    :param metadata: Optional dict metadata to include in output
+    :param timeout: seconds to wait for a response
+    :returns: dict MQ response
+    """
+    from neon_mq_connector.utils.client_utils import send_mq_request
+    with open(script_path, 'r') as f:
+        text = f.read()
+    metadata = metadata or {}
+    response = send_mq_request("/neon_script_parser", {"text": text,
+                                                       "metadata": metadata},
+                               "neon_script_parser_input",
+                               "neon_script_parser_output", timeout)
     return response

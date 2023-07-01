@@ -194,4 +194,18 @@ def start_llm_chat(llm):
         click.echo(resp)
 
 
-# TODO: Scripts, brands, email, metrics
+@neon_iris_cli.command(help="Converse with an LLM")
+def get_coupons():
+    from neon_iris.util import get_brands_coupons
+    data = get_brands_coupons()
+    click.echo(pformat(data))
+
+
+@neon_iris_cli.command(help="Parse a Neon CCL script")
+@click.argument("script_file")
+def parse_script(script_file):
+    from neon_iris.util import parse_ccl_script
+    data = parse_ccl_script(script_file)
+    click.echo(pformat(data))
+
+# TODO: email, metrics
