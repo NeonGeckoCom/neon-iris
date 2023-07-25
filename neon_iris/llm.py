@@ -26,41 +26,20 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE,  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os
-import sys
-import unittest
-
-from neon_utils.mq_utils import NeonMQHandler
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-from neon_iris.client import NeonAIClient
-
-_test_config = {
-    "MQ": {
-        "server": "mq.2022.us",
-        "port": 25672,
-        "users": {
-            "mq_handler": {
-                "user": "neon_api_utils",
-                "password": "Klatchat2021"
-            }
-        }
-    }
-}
+from neon_mq_connector.utils.client_utils import send_mq_request
 
 
-class TestClient(unittest.TestCase):
-    def test_client_create(self):
-        client = NeonAIClient(_test_config)
-        self.assertIsInstance(client.uid, str)
-        self.assertEqual(client._config, _test_config)
-        self.assertEqual(client._connection.config, _test_config["MQ"])
-        self.assertTrue(os.path.isdir(client.audio_cache_dir))
-        self.assertIsInstance(client.client_name, str)
-        self.assertIsInstance(client.connection, NeonMQHandler)
-        self.assertEqual(client.connection.vhost, "/neon_chat_api")
-        client.shutdown()
+class LLMConversation:
+    def __init__(self, llm: str = "chat_gpt"):
+        self.history = list()
+        self.queue = f"{llm}_input"
 
-
-if __name__ == '__main__':
-    unittest.main()
+    def get_response(self, query: str):
+        resp = send_mq_request("/llm", {'query': query,
+                                        'history': self.history}, self.queue,
+                               timeout=90)
+        reply = resp.get("response") or ""
+        if reply:
+            self.history.append(("user", query))
+            self.history.append(("llm", reply))
+        return reply

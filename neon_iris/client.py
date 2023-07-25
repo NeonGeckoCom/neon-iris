@@ -37,7 +37,7 @@ from threading import Event, Thread
 from time import time
 from typing import Optional
 from uuid import uuid4
-from mycroft_bus_client import Message
+from ovos_bus_client.message import Message
 from pika.exceptions import StreamLostError
 from neon_utils.configuration_utils import get_neon_user_config
 from neon_utils.mq_utils import NeonMQHandler
@@ -290,7 +290,8 @@ class NeonAIClient:
             self.shutdown()
 
     def _init_mq_connection(self):
-        mq_connection = NeonMQHandler(self._config, "mq_handler", self._vhost)
+        mq_config = self._config.get("MQ") or self._config
+        mq_connection = NeonMQHandler(mq_config, "mq_handler", self._vhost)
         mq_connection.register_consumer("neon_response_handler", self._vhost,
                                         self.uid, self.handle_neon_response,
                                         auto_ack=False)
