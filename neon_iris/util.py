@@ -29,6 +29,8 @@ import yaml
 from os.path import isfile
 from ovos_utils.log import LOG
 
+from neon_utils.file_utils import encode_file_to_base64_string
+
 
 def load_config_file(file_path: str) -> dict:
     """
@@ -89,4 +91,42 @@ def parse_ccl_script(script_path: str, metadata: dict = None,
                                                        "metadata": metadata},
                                "neon_script_parser_input",
                                "neon_script_parser_output", timeout)
+    return response
+
+
+def query_neon(msg_type: str, data: dict, timeout: int = 10) -> dict:
+    """
+    Query a Neon Core service on the `/neon_chat_api`
+    :param msg_type: string message type to emit
+    :param data: message data to send
+    :param timeout: seconds to wait for a response
+    """
+    from neon_mq_connector.utils.client_utils import send_mq_request
+    query = {"msg_type": msg_type, "data": data, "context": {"source": "iris"}}
+    response = send_mq_request("/neon_chat_api", query, "neon_chat_api_request",
+                               timeout=timeout)
+    if response:
+        response["context"]["session"] = \
+            set(response["context"].pop("session").keys())
+    return response
+
+
+def get_stt(audio_file: str, lang: str = "en-us") -> dict:
+    data = {"audio_file": audio_file,
+            "audio_data": encode_file_to_base64_string(audio_file),
+            "utterances": [""],  # TODO: For MQ Connector compat.
+            "lang": lang}
+    response = query_neon("neon.get_stt", data, 20)
+    return response
+
+
+def get_tts(string: str, lang: str = "en-us") -> dict:
+    data = {"text": string,
+            "utterance": string,  # TODO: For MQ Connector compat.
+            "utterances": [""],  # TODO: For MQ Connector compat.
+            "speaker": {"name": "Neon",
+                        "language": lang,
+                        "gender": "female"},  # TODO: For neon_audio compat.
+            "lang": lang}
+    response = query_neon("neon.get_tts", data)
     return response
