@@ -71,8 +71,12 @@ def neon_iris_cli(version: bool = False):
               help="Flag to enable audio playback")
 def start_client(mq_config, user_config, lang, audio):
     from neon_iris.client import CLIClient
+    _print_config()
     if mq_config:
         mq_config = load_config_file(expanduser(mq_config))
+    else:
+        from ovos_config.config import Configuration
+        mq_config = Configuration().get("MQ")
     if user_config:
         user_config = load_config_file(expanduser(user_config))
     client = CLIClient(mq_config, user_config)
@@ -114,6 +118,29 @@ def start_client(mq_config, user_config, lang, audio):
     client.shutdown()
 
 
+@neon_iris_cli.command(help="Transcribe an audio file")
+@click.option('--lang', '-l', default='en-us',
+              help="language of input audio")
+@click.argument("audio_file")
+def get_stt(audio_file, lang):
+    from neon_iris.util import get_stt
+    _print_config()
+    resp = get_stt(audio_file, lang)
+    click.echo(pformat(resp))
+
+
+@neon_iris_cli.command(help="Transcribe an audio file")
+@click.option('--lang', '-l', default='en-us',
+              help="language of input audio")
+@click.argument("utterance")
+def get_tts(utterance, lang):
+    from neon_iris.util import get_tts
+    _print_config()
+    resp = get_tts(utterance, lang)
+    click.echo(pformat(resp))
+
+
+# Backend
 @neon_iris_cli.command(help="Query a weather endpoint")
 @click.option('--unit', '-u', default='imperial',
               help="units to use ('metric' or 'imperial')")
