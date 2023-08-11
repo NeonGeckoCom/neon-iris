@@ -254,7 +254,8 @@ class NeonAIClient:
                         "ident": ident or str(time()),
                         "username": username,
                         "user_profiles": user_profiles or list(),
-                        "klat_data": {"routing_key": self.uid}
+                        "mq": {"routing_key": self.uid,
+                               "message_id": self.connection.create_unique_id()}
                         })
 
     def _send_utterance(self, utterance: str, lang: str,
