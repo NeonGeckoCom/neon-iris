@@ -40,6 +40,7 @@ from neon_iris.version import __version__
 
 environ.setdefault("OVOS_CONFIG_BASE_FOLDER", "neon")
 environ.setdefault("OVOS_CONFIG_FILENAME", "diana.yaml")
+# TODO: Define default config file from this package
 
 
 def _print_config():
@@ -80,7 +81,7 @@ def start_client(mq_config, user_config, lang, audio):
     if user_config:
         user_config = load_config_file(expanduser(user_config))
     client = CLIClient(mq_config, user_config)
-    LOG.init({"level": logging.WARNING})
+    LOG.init({"level": logging.WARNING})  # TODO: Debug flag?
 
     client.audio_enabled = audio
     click.echo("Enter '!{lang}' to change language\n"
@@ -115,6 +116,16 @@ def start_client(mq_config, user_config, lang, audio):
     except Exception as e:
         click.echo(e)
     click.echo("Shutting Down Client")
+    client.shutdown()
+
+
+@neon_iris_cli.command(help="Create an MQ listener session")
+def start_listener():
+    from neon_iris.voice_client import NeonVoiceClient
+    from ovos_utils import wait_for_exit_signal
+    client = NeonVoiceClient()
+    _print_config()
+    wait_for_exit_signal()
     client.shutdown()
 
 

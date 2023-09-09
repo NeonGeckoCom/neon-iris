@@ -29,7 +29,7 @@ import wave
 from threading import Event, Thread
 from time import time
 from unittest.mock import Mock
-from os.path import join, isdir
+from os.path import join, isdir, dirname
 from os import makedirs
 
 from ovos_plugin_manager.microphone import OVOSMicrophoneFactory
@@ -68,7 +68,8 @@ class NeonVoiceClient(NeonAIClient):
                                            fallback_stt=Mock(),
                                            vad=self._vad,
                                            transformers=MockTransformers(),
-                                           stt_audio_callback=self.on_stt_audio)
+                                           stt_audio_callback=self.on_stt_audio,
+                                           listenword_audio_callback=self.on_hotword_audio)
         self._voice_loop.start()
         self._voice_thread = None
 
@@ -78,6 +79,9 @@ class NeonVoiceClient(NeonAIClient):
             makedirs(self._stt_audio_path)
         if not isdir(self._tts_audio_path):
             makedirs(self._tts_audio_path)
+
+        self._listening_sound = join(dirname(__file__), "res",
+                                     "start_listening.wav")
 
         self.run()
 
@@ -96,25 +100,27 @@ class NeonVoiceClient(NeonAIClient):
             wav_file.writeframes(audio_bytes)
 
         self.send_audio(wav_path)
+        LOG.debug("Sent Audio to MQ")
 
     def on_hotword_audio(self, audio: bytes, context: dict):
         payload = context
         msg_type = "recognizer_loop:wakeword"
-
+        play_wav(self._listening_sound)
         LOG.info(f"Emitting hotword event: {msg_type}")
         # emit ww event
         self.bus.emit(Message(msg_type, payload, context))
 
     def handle_klat_response(self, message: Message):
         responses = message.data.get('responses')
-        for lang, data in responses:
+        for lang, data in responses.items():
             text = data.get('sentence')
             LOG.info(text)
             file_basename = f"{hash(text)}.wav"
             genders = data.get('genders', [])
             for gender in genders:
-                audio_data = data.get(gender)
-                audio_file = join(self._tts_audio_path, lang, gender, file_basename)
+                audio_data = data["audio"].get(gender)
+                audio_file = join(self._tts_audio_path, lang, gender,
+                                  file_basename)
                 try:
                     decode_base64_string_to_file(audio_data, audio_file)
                 except FileExistsError:
@@ -140,10 +146,3 @@ class NeonVoiceClient(NeonAIClient):
         self._voice_loop.stop()
         self._voice_thread.join(30)
         NeonAIClient.shutdown(self)
-
-
-if __name__ == "__main__":
-    stopping = Event()
-    client = NeonVoiceClient()
-    stopping.wait()
-
