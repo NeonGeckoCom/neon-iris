@@ -46,6 +46,19 @@ class GradIOClient(NeonAIClient):
         self.lang = lang or self.config.get('lang', 'en-us')
         self.chat_ui = gradio.Blocks()
 
+    @property
+    def supported_languages(self):
+        # TODO Implement lookup in base class
+        return ['en-us', 'uk-ua']
+
+    def update_profile(self, stt_lang, tts_lang, tts_lang_2):
+        # TODO: Per-client config
+        profile_update = {"speech": {"stt_language": stt_lang,
+                                     "tts_language": tts_lang,
+                                     "secondary_tts_language": tts_lang_2}}
+        from neon_utils.user_utils import apply_local_user_profile_updates
+        apply_local_user_profile_updates(profile_update, self._user_config)
+
     def on_user_input(self, utterance: str, *args, **kwargs):
         LOG.info(args)
         LOG.info(kwargs)
@@ -63,7 +76,9 @@ class GradIOClient(NeonAIClient):
         audio_input = gradio.Audio(source="microphone", type="filepath")
         chatbot = gradio.Chatbot(label=description)
         textbox = gradio.Textbox(placeholder=placeholder)
+
         with self.chat_ui as blocks:
+            # Define primary UI
             gradio.ChatInterface(self.on_user_input,
                                  chatbot=chatbot,
                                  textbox=textbox,
@@ -71,6 +86,31 @@ class GradIOClient(NeonAIClient):
                                  title=title,
                                  retry_btn=None,
                                  undo_btn=None)
+            # Define settings UI
+            with gradio.Row():
+                submit = gradio.Button("Update User Settings")
+            with gradio.Row():
+                with gradio.Column():
+                    stt_lang = gradio.Radio(label="Input Language",
+                                 choices=self.supported_languages,
+                                 value=self.lang)
+                    tts_lang = gradio.Radio(label="Response Language",
+                                 choices=self.supported_languages,
+                                 value=self.lang)
+                    tts_lang_2 = gradio.Radio(label="Secondary Response Language",
+                                 choices=[None] + self.supported_languages,
+                                 value=None)
+                with gradio.Column():
+                    # TODO: Unit settings
+                    pass
+                with gradio.Column():
+                    # TODO: Location settings
+                    pass
+                with gradio.Column():
+                    # TODO Name settings
+                    pass
+            submit.click(self.update_profile,
+                         inputs=[stt_lang, tts_lang, tts_lang_2])
             blocks.launch(server_name="0.0.0.0", server_port=7860)
 
     def handle_klat_response(self, message: Message):
