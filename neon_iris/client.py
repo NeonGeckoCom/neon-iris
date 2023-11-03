@@ -136,6 +136,8 @@ class NeonAIClient:
             self._handle_profile_update(message)
         elif message.msg_type == "neon.clear_data":
             self._handle_clear_data(message)
+        elif message.msg_type == "klat.error":
+            self.handle_error_response(message)
         elif message.msg_type.endswith(".response"):
             self.handle_api_response(message)
         else:
@@ -248,12 +250,14 @@ class NeonAIClient:
                        username: Optional[str] = None,
                        user_profiles: Optional[list] = None,
                        ident: str = None) -> Message:
+        user_profiles = user_profiles or [self.user_config]
+        username = username or user_profiles[0]['user']['username']
         return Message(msg_type, data,
                        {"client_name": self.client_name,
                         "client": self._client,
                         "ident": ident or str(time()),
                         "username": username,
-                        "user_profiles": user_profiles or list(),
+                        "user_profiles": user_profiles,
                         "mq": {"routing_key": self.uid,
                                "message_id": self.connection.create_unique_id()}
                         })
