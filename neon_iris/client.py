@@ -75,6 +75,10 @@ class NeonAIClient:
         return self._uid
 
     @property
+    def default_username(self) -> str:
+        return self._user_config["user"]["username"]
+
+    @property
     def user_config(self) -> dict:
         """
         JSON-parsable dict user configuration
@@ -264,6 +268,8 @@ class NeonAIClient:
 
     def _send_utterance(self, utterance: str, lang: str,
                         username: str, user_profiles: list):
+        username = username or self.default_username
+        user_profiles = user_profiles or [self.user_config]
         message = self._build_message("recognizer_loop:utterance",
                                       {"utterances": [utterance],
                                        "lang": lang}, username, user_profiles)
