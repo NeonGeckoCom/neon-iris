@@ -9,9 +9,13 @@ on:
       - 'neon_iris/version.py'
 
 jobs:
-  build_and_publish_pypi:
+  publish_alpha_release:
     uses: neongeckocom/.github/.github/workflows/publish_alpha_release.yml@master
     secrets: inherit
     with:
       version_file: "neon_iris/version.py"
       setup_py: "setup.py"
+  build_and_publish_docker:
+    needs: publish_alpha_release
+    uses: neongeckocom/.github/.github/workflows/publish_docker.yml@master
+    secrets: inherit

@@ -24,6 +24,7 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE,  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from os.path import isfile
+from typing import List
 
 import gradio
 
@@ -39,40 +40,65 @@ from neon_iris.client import NeonAIClient
 
 class GradIOClient(NeonAIClient):
     def __init__(self, lang: str = None):
-        self.config = Configuration()
-        NeonAIClient.__init__(self, self.config.get("MQ"))
+        config = Configuration()
+        self.config = config.get('iris') or dict()
+        NeonAIClient.__init__(self, config.get("MQ"))
         self._await_response = Event()
         self._response = None
-        self.lang = lang or self.config.get('lang', 'en-us')
+        self.lang = lang or self.config.get('default_lang') or \
+                    self.config.get('languages', ['en-us'])[0]
         self.chat_ui = gradio.Blocks()
 
     @property
-    def supported_languages(self):
-        # TODO Implement lookup in base class
-        return ['en-us', 'uk-ua']
+    def supported_languages(self) -> List[str]:
+        """
+        Get a list of supported languages from configuration
+        @returns: list of BCP-47 language codes
+        """
+        return self.config.get('languages') or [self.lang]
 
-    def update_profile(self, stt_lang, tts_lang, tts_lang_2):
-        # TODO: Per-client config
+    def update_profile(self, stt_lang: str, tts_lang: str, tts_lang_2: str):
+        """
+        Callback to handle user settings changes from the web UI
+        """
+        # TODO: Per-client config. The current method of referencing
+        #  `self._user_config` means every user shares one configuration which
+        #  does not scale. This client should probably override the
+        #  `self.user_config` property and implement a method for storing user
+        #  configuration in cookies or similar.
         profile_update = {"speech": {"stt_language": stt_lang,
                                      "tts_language": tts_lang,
                                      "secondary_tts_language": tts_lang_2}}
         from neon_utils.user_utils import apply_local_user_profile_updates
         apply_local_user_profile_updates(profile_update, self._user_config)
 
-    def on_user_input(self, utterance: str, *args, **kwargs):
+    def on_user_input(self, utterance: str, *args, **kwargs) -> str:
+        """
+        Callback to handle textual user input
+        @param utterance: String utterance submitted by the user
+        @returns: String response from Neon (or "ERROR")
+        """
         LOG.info(args)
         LOG.info(kwargs)
         self._await_response.clear()
         self._response = None
         self.send_utterance(utterance, self.lang)
         self._await_response.wait(30)
+        self._response = self._response or "ERROR"
         LOG.info(f"Response={self._response}")
         return self._response
 
     def run(self):
-        title = "Neon AI"
-        description = "Chat With Neon"
-        placeholder = "Ask me something"
+        """
+        Blocking method to start the web server
+        """
+        title = self.config.get("webui_title", "Neon AI")
+        description = self.config.get("webui_description", "Chat With Neon")
+        placeholder = self.config.get("webui_input_placeholder",
+                                      "Ask me something")
+        address = self.config.get("server_address") or "0.0.0.0"
+        port = self.config.get("server_port") or 7860
+
         audio_input = gradio.Audio(source="microphone", type="filepath")
         chatbot = gradio.Chatbot(label=description)
         textbox = gradio.Textbox(placeholder=placeholder)
@@ -92,14 +118,15 @@ class GradIOClient(NeonAIClient):
             with gradio.Row():
                 with gradio.Column():
                     stt_lang = gradio.Radio(label="Input Language",
-                                 choices=self.supported_languages,
-                                 value=self.lang)
+                                            choices=self.supported_languages,
+                                            value=self.lang)
                     tts_lang = gradio.Radio(label="Response Language",
-                                 choices=self.supported_languages,
-                                 value=self.lang)
-                    tts_lang_2 = gradio.Radio(label="Secondary Response Language",
-                                 choices=[None] + self.supported_languages,
-                                 value=None)
+                                            choices=self.supported_languages,
+                                            value=self.lang)
+                    tts_lang_2 = gradio.Radio(label="Second Response Language",
+                                              choices=[None] +
+                                              self.supported_languages,
+                                              value=None)
                 with gradio.Column():
                     # TODO: Unit settings
                     pass
@@ -111,9 +138,14 @@ class GradIOClient(NeonAIClient):
                     pass
             submit.click(self.update_profile,
                          inputs=[stt_lang, tts_lang, tts_lang_2])
-            blocks.launch(server_name="0.0.0.0", server_port=7860)
+            blocks.launch(server_name=address, server_port=port)
 
     def handle_klat_response(self, message: Message):
+        """
+        Handle a valid response from Neon. This includes text and base64-encoded
+        audio in all requested languages.
+        @param message: Neon response message
+        """
         LOG.debug(f"Response_data={message.data}")
         resp_data = message.data["responses"]
         files = []
@@ -131,17 +163,42 @@ class GradIOClient(NeonAIClient):
         self._await_response.set()
 
     def handle_complete_intent_failure(self, message: Message):
+        """
+        Handle an intent failure response from Neon. This should not happen and
+        indicates the Neon service is probably not yet ready.
+        @param message: Neon intent failure response message
+        """
         self._response = "ERROR"
         self._await_response.set()
 
     def handle_api_response(self, message: Message):
-        pass
+        """
+        Catch-all handler for `.response` messages routed to this client that
+        are not explicitly handled (i.e. get_stt, get_tts)
+        @param message: Response message to something emitted by this client
+        """
+        LOG.debug(f"Got {message.msg_type}: {message.data}")
 
     def handle_error_response(self, message: Message):
-        pass
+        """
+        Handle an error response from the MQ service attached to Neon. This
+        usually indicates a malformed input.
+        @param message: Response message indicating reason for failure
+        """
+        LOG.error(f"Error response: {message.data}")
 
     def clear_caches(self, message: Message):
-        pass
+        """
+        Handle a request from Neon to clear cached data.
+        @param message: Message requesting cache deletion. The context of this
+            message will include the requesting user for user-specific caches
+        """
+        # TODO: remove cached TTS audio responses
 
     def clear_media(self, message: Message):
+        """
+        Handle a request from Neon to clear local multimedia. This method does
+        not apply to this client as there is no user-generated media to clear.
+        @param message: Message requesting media deletion
+        """
         pass
