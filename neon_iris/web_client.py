@@ -78,6 +78,7 @@ class GradIOClient(NeonAIClient):
         @param utterance: String utterance submitted by the user
         @returns: String response from Neon (or "ERROR")
         """
+        LOG.info(utterance)
         LOG.info(args)
         LOG.info(kwargs)
         self._await_response.clear()
@@ -85,6 +86,23 @@ class GradIOClient(NeonAIClient):
         self.send_utterance(utterance, self.lang)
         self._await_response.wait(30)
         self._response = self._response or "ERROR"
+        LOG.info(f"Response={self._response}")
+        return self._response
+
+    def on_user_speech(self, audio_path: str, *args, **kwargs) -> str:
+        """
+        Callback to handle audio user input
+        @param audio_path: String path of recording created by the user
+        @returns: String response from Neon (or "ERROR")
+        """
+        LOG.info(f"Received audio from user speech: {audio_path}")
+        LOG.info(args)
+        LOG.info(kwargs)
+        self._await_response.clear()
+        self._response = None
+        # self.send_utterance(utterance, self.lang)
+        # self._await_response.wait(30)
+        self._response = self._response or "NOT YET IMPLEMENTED"
         LOG.info(f"Response={self._response}")
         return self._response
 
@@ -99,7 +117,8 @@ class GradIOClient(NeonAIClient):
         address = self.config.get("server_address") or "0.0.0.0"
         port = self.config.get("server_port") or 7860
 
-        audio_input = gradio.Audio(source="microphone", type="filepath")
+        audio_input = gradio.Audio(source="microphone", type="filepath", label="Talk to NEON")
+        audio_output = gradio.Audio(source="upload", type="filepath", label="NEON's response", interactive=False, autoplay=True)
         chatbot = gradio.Chatbot(label=description)
         textbox = gradio.Textbox(placeholder=placeholder)
 
@@ -108,7 +127,8 @@ class GradIOClient(NeonAIClient):
             gradio.ChatInterface(self.on_user_input,
                                  chatbot=chatbot,
                                  textbox=textbox,
-                                 additional_inputs=audio_input,
+                                 additional_inputs=[audio_input, audio_output],
+                                 additional_inputs_accordion_name="Talk to NEON",
                                  title=title,
                                  retry_btn=None,
                                  undo_btn=None)
@@ -138,6 +158,7 @@ class GradIOClient(NeonAIClient):
                     pass
             submit.click(self.update_profile,
                          inputs=[stt_lang, tts_lang, tts_lang_2])
+            audio_input.stop_recording(self.on_user_speech, inputs=[audio_input])
             blocks.launch(server_name=address, server_port=port)
 
     def handle_klat_response(self, message: Message):
@@ -159,6 +180,7 @@ class GradIOClient(NeonAIClient):
                     files.append(filepath)
                     if not isfile(filepath):
                         decode_base64_string_to_file(data, filepath)
+                    self._play_tts_responses(filepath)
         self._response = "\n".join(sentences)
         self._await_response.set()
 
@@ -202,3 +224,11 @@ class GradIOClient(NeonAIClient):
         @param message: Message requesting media deletion
         """
         pass
+
+    def _play_tts_response(self, filepath: str):
+        """
+        Play a single TTS response
+        @param filepath: Path to TTS audio file
+        """
+        LOG.debug(f"Playing TTS file {filepath}")
+        # TODO: Figure out how to play audio in the web UI
