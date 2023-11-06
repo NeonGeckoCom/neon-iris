@@ -283,7 +283,8 @@ class NeonAIClient:
         audio_data = encode_file_to_base64_string(audio_file)
         message = self._build_message("neon.audio_input",
                                       {"lang": lang,
-                                       "audio_data": audio_data},
+                                       "audio_data": audio_data,
+                                       "utterances": []},
                                       username, user_profiles)
         serialized = {"msg_type": message.msg_type,
                       "data": message.data,

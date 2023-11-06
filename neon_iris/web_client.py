@@ -23,8 +23,9 @@
 # LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE,  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-from os.path import isfile
-from typing import List
+from os.path import isfile, join
+from time import time
+from typing import List, Optional
 
 import gradio
 
@@ -32,11 +33,12 @@ from threading import Event
 from ovos_bus_client import Message
 from ovos_config import Configuration
 from ovos_utils import LOG
-
 from neon_utils.file_utils import decode_base64_string_to_file
+from ovos_utils.xdg_utils import xdg_data_home
 
 from neon_iris.client import NeonAIClient
-
+import librosa
+import soundfile as sf
 
 class GradIOClient(NeonAIClient):
     def __init__(self, lang: str = None):
@@ -45,6 +47,7 @@ class GradIOClient(NeonAIClient):
         NeonAIClient.__init__(self, config.get("MQ"))
         self._await_response = Event()
         self._response = None
+        self._current_tts = None
         self.lang = lang or self.config.get('default_lang') or \
                     self.config.get('languages', ['en-us'])[0]
         self.chat_ui = gradio.Blocks()
@@ -72,39 +75,66 @@ class GradIOClient(NeonAIClient):
         from neon_utils.user_utils import apply_local_user_profile_updates
         apply_local_user_profile_updates(profile_update, self._user_config)
 
+    def send_audio(self, audio_file: str, lang: str = "en-us",
+                   username: Optional[str] = None,
+                   user_profiles: Optional[list] = None):
+        """
+        @param audio_file: path to audio file to send to speech module
+        @param lang: language code associated with request
+        @param username: username associated with request
+        @param user_profiles: user profiles expecting a response
+        """
+        audio_file = self.convert_audio(audio_file)
+        self._send_audio(audio_file, lang, username, user_profiles)
+
+    def convert_audio(self, audio_file: str, target_sr=16000, target_channels=1, dtype='int16') -> str:
+        """
+        @param audio_file: path to audio file to convert for speech model
+        @returns: path to converted audio file
+        """
+        # Load the audio file
+        y, sr = librosa.load(audio_file, sr=None, mono=False)  # Load without changing sample rate or channels
+
+        # If the file has more than one channel, mix it down to one channel
+        if y.ndim > 1 and target_channels == 1:
+            y = librosa.to_mono(y)
+
+        # Resample the audio to the target sample rate
+        y_resampled = librosa.resample(y, orig_sr=sr, target_sr=target_sr)
+        
+        # Ensure the audio array is in the correct format (int16 for 2-byte samples)
+        y_resampled = (y_resampled * (2**(8*2 - 1))).astype(dtype)
+
+        output_path = join(join(xdg_data_home(), "iris", "stt"), f"{time()}.wav")
+        # Save the audio file with the new sample rate and sample width
+        sf.write(output_path, y_resampled, target_sr, format='WAV', subtype='PCM_16')
+        LOG.info(f"Converted audio file to {output_path}")
+        return output_path
+
     def on_user_input(self, utterance: str, *args, **kwargs) -> str:
         """
         Callback to handle textual user input
         @param utterance: String utterance submitted by the user
         @returns: String response from Neon (or "ERROR")
         """
-        LOG.info(utterance)
         LOG.info(args)
         LOG.info(kwargs)
         self._await_response.clear()
         self._response = None
-        self.send_utterance(utterance, self.lang)
+        if utterance:
+            LOG.info(f"Sending utterance: {utterance}")
+            self.send_utterance(utterance, self.lang)
+        else:
+            LOG.info(f"Sending audio: {args[1]} with lang: {self.lang}")
+            self.send_audio(args[1], self.lang)
         self._await_response.wait(30)
         self._response = self._response or "ERROR"
-        LOG.info(f"Response={self._response}")
+        LOG.info(f"Got response={self._response}")
         return self._response
 
-    def on_user_speech(self, audio_path: str, *args, **kwargs) -> str:
-        """
-        Callback to handle audio user input
-        @param audio_path: String path of recording created by the user
-        @returns: String response from Neon (or "ERROR")
-        """
-        LOG.info(f"Received audio from user speech: {audio_path}")
-        LOG.info(args)
-        LOG.info(kwargs)
-        self._await_response.clear()
-        self._response = None
-        # self.send_utterance(utterance, self.lang)
-        # self._await_response.wait(30)
-        self._response = self._response or "NOT YET IMPLEMENTED"
-        LOG.info(f"Response={self._response}")
-        return self._response
+    def play_tts(self):
+        LOG.info(f"Playing most recent TTS file {self._current_tts}")
+        return self._current_tts
 
     def run(self):
         """
@@ -117,24 +147,28 @@ class GradIOClient(NeonAIClient):
         address = self.config.get("server_address") or "0.0.0.0"
         port = self.config.get("server_port") or 7860
 
-        audio_input = gradio.Audio(source="microphone", type="filepath", label="Talk to NEON")
-        audio_output = gradio.Audio(source="upload", type="filepath", label="NEON's response", interactive=False, autoplay=True)
         chatbot = gradio.Chatbot(label=description)
         textbox = gradio.Textbox(placeholder=placeholder)
 
         with self.chat_ui as blocks:
             # Define primary UI
+            audio_input = gradio.Audio(source="microphone",
+                            type="filepath",
+                            label="Talk to NEON",
+                            auto_submit=True)
             gradio.ChatInterface(self.on_user_input,
                                  chatbot=chatbot,
                                  textbox=textbox,
-                                 additional_inputs=[audio_input, audio_output],
-                                 additional_inputs_accordion_name="Talk to NEON",
+                                 additional_inputs=[audio_input],
                                  title=title,
                                  retry_btn=None,
-                                 undo_btn=None)
+                                 undo_btn=None,)
+            tts_audio = gradio.Audio(autoplay=True, visible=True,
+                                     label="Neon's Response")
+            tts_button = gradio.Button("Play TTS")
+            tts_button.click(self.play_tts,
+                             outputs=[tts_audio])
             # Define settings UI
-            with gradio.Row():
-                submit = gradio.Button("Update User Settings")
             with gradio.Row():
                 with gradio.Column():
                     stt_lang = gradio.Radio(label="Input Language",
@@ -147,6 +181,7 @@ class GradIOClient(NeonAIClient):
                                               choices=[None] +
                                               self.supported_languages,
                                               value=None)
+                    submit = gradio.Button("Update User Settings")
                 with gradio.Column():
                     # TODO: Unit settings
                     pass
@@ -158,7 +193,6 @@ class GradIOClient(NeonAIClient):
                     pass
             submit.click(self.update_profile,
                          inputs=[stt_lang, tts_lang, tts_lang_2])
-            audio_input.stop_recording(self.on_user_speech, inputs=[audio_input])
             blocks.launch(server_name=address, server_port=port)
 
     def handle_klat_response(self, message: Message):
@@ -177,10 +211,12 @@ class GradIOClient(NeonAIClient):
                 for gender, data in response["audio"].items():
                     filepath = "/".join([self.audio_cache_dir] +
                                         response[gender].split('/')[-4:])
+                    # TODO: This only plays the most recent, so it doesn't support
+                    # multiple languages
+                    self._current_tts = filepath
                     files.append(filepath)
                     if not isfile(filepath):
                         decode_base64_string_to_file(data, filepath)
-                    self._play_tts_responses(filepath)
         self._response = "\n".join(sentences)
         self._await_response.set()
 
@@ -224,11 +260,3 @@ class GradIOClient(NeonAIClient):
         @param message: Message requesting media deletion
         """
         pass
-
-    def _play_tts_response(self, filepath: str):
-        """
-        Play a single TTS response
-        @param filepath: Path to TTS audio file
-        """
-        LOG.debug(f"Playing TTS file {filepath}")
-        # TODO: Figure out how to play audio in the web UI
