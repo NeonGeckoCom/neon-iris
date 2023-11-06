@@ -4,3 +4,4 @@ neon-utils~=1.0
 pyyaml>=5.4,<7.0.0
 neon-mq-connector~=0.7,>=0.7.1a4
 ovos-bus-client~=0.0.3
+librosa~=0.10.1
