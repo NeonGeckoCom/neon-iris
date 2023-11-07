@@ -54,9 +54,12 @@ class GradIOClient(NeonAIClient):
         self._audio_path = join(xdg_data_home(), "iris", "stt")
         if not isdir(self._audio_path):
             makedirs(self._audio_path)
-        self.lang = lang or self.config.get('default_lang') or \
-                    self.config.get('languages', ['en-us'])[0]
+        self.default_lang = lang or self.config.get('default_lang')
         self.chat_ui = gradio.Blocks()
+
+    @property
+    def lang(self):
+        return self.user_config['speech']['stt_language'] or self.default_lang
 
     @property
     def supported_languages(self) -> List[str]:
@@ -64,7 +67,7 @@ class GradIOClient(NeonAIClient):
         Get a list of supported languages from configuration
         @returns: list of BCP-47 language codes
         """
-        return self.config.get('languages') or [self.lang]
+        return self.config.get('languages') or [self.default_lang]
 
     def update_profile(self, stt_lang: str, tts_lang: str, tts_lang_2: str):
         """
@@ -130,7 +133,7 @@ class GradIOClient(NeonAIClient):
         self._await_response.clear()
         self._response = None
         if utterance:
-            LOG.info(f"Sending utterance: {utterance}")
+            LOG.info(f"Sending utterance: {utterance} with lang: {self.lang}")
             self.send_utterance(utterance, self.lang)
         else:
             LOG.info(f"Sending audio: {args[1]} with lang: {self.lang}")
