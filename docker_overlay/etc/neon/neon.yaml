@@ -1,0 +1,19 @@
+MQ:
+  server: neon-rabbitmq
+  port: 5672
+  users:
+    mq_handler:
+      user: neon_api_utils
+      password: Klatchat2021
+iris:
+  webui_title: Neon AI
+  webui_description: Chat with Neon
+  webui_input_placeholder: Ask me something
+  server_address: "0.0.0.0"
+  server_port: 7860
+  default_lang: en-us
+  languages:
+    - en-us
+    - fr-fr
+    - es-es
+    - uk-ua

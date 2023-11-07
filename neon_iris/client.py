@@ -75,6 +75,10 @@ class NeonAIClient:
         return self._uid
 
     @property
+    def default_username(self) -> str:
+        return self._user_config["user"]["username"]
+
+    @property
     def user_config(self) -> dict:
         """
         JSON-parsable dict user configuration
@@ -264,6 +268,8 @@ class NeonAIClient:
 
     def _send_utterance(self, utterance: str, lang: str,
                         username: str, user_profiles: list):
+        username = username or self.default_username
+        user_profiles = user_profiles or [self.user_config]
         message = self._build_message("recognizer_loop:utterance",
                                       {"utterances": [utterance],
                                        "lang": lang}, username, user_profiles)
@@ -277,7 +283,9 @@ class NeonAIClient:
         audio_data = encode_file_to_base64_string(audio_file)
         message = self._build_message("neon.audio_input",
                                       {"lang": lang,
-                                       "audio_data": audio_data},
+                                       "audio_data": audio_data,
+                                       "utterances": []},
+                                      # TODO: `utterances` patching mq connector
                                       username, user_profiles)
         serialized = {"msg_type": message.msg_type,
                       "data": message.data,
@@ -290,6 +298,7 @@ class NeonAIClient:
                 self._connection.connection,
                 queue="neon_chat_api_request",
                 request_data=serialized)
+            LOG.debug(f"emitted {serialized.get('msg_type')}")
         except Exception as e:
             LOG.exception(e)
             self.shutdown()

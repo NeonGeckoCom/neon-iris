@@ -71,6 +71,7 @@ setuptools.setup(
     ],
     python_requires='>=3.6',
     install_requires=get_requirements("requirements.txt"),
+    extras_require={"gradio": get_requirements("gradio.txt")},
     entry_points={
         'console_scripts': ['iris=neon_iris.cli:neon_iris_cli']
     }

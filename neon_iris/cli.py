@@ -129,6 +129,13 @@ def start_listener():
     client.shutdown()
 
 
+@neon_iris_cli.command(help="Create a GradIO Client session")
+def start_gradio():
+    from neon_iris.web_client import GradIOClient
+    chat = GradIOClient()
+    chat.run()
+
+
 @neon_iris_cli.command(help="Transcribe an audio file")
 @click.option('--lang', '-l', default='en-us',
               help="language of input audio")
