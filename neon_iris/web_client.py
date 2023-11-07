@@ -23,7 +23,7 @@
 # LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE,  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+from asyncio import Queue
 from os import makedirs
 from os.path import isfile, join, isdir
 from time import time
@@ -128,7 +128,9 @@ class GradIOClient(NeonAIClient):
         @param utterance: String utterance submitted by the user
         @returns: String response from Neon (or "ERROR")
         """
-        # TODO: This should probably queue with a separate iterator thread
+        LOG.debug(f"Input received")
+        if not self._await_response.wait(30):
+            LOG.error("Previous response not completed after 30 seconds")
         LOG.debug(f"args={args}|kwargs={kwargs}")
         self._await_response.clear()
         self._response = None
