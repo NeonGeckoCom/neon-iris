@@ -285,6 +285,7 @@ class NeonAIClient:
                                       {"lang": lang,
                                        "audio_data": audio_data,
                                        "utterances": []},
+                                      # TODO: `utterances` patching mq connector
                                       username, user_profiles)
         serialized = {"msg_type": message.msg_type,
                       "data": message.data,

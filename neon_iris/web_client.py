@@ -40,6 +40,7 @@ from neon_iris.client import NeonAIClient
 import librosa
 import soundfile as sf
 
+
 class GradIOClient(NeonAIClient):
     def __init__(self, lang: str = None):
         config = Configuration()
@@ -87,7 +88,8 @@ class GradIOClient(NeonAIClient):
         audio_file = self.convert_audio(audio_file)
         self._send_audio(audio_file, lang, username, user_profiles)
 
-    def convert_audio(self, audio_file: str, target_sr=16000, target_channels=1, dtype='int16') -> str:
+    def convert_audio(self, audio_file: str, target_sr=16000, target_channels=1,
+                      dtype='int16') -> str:
         """
         @param audio_file: path to audio file to convert for speech model
         @returns: path to converted audio file
@@ -101,9 +103,9 @@ class GradIOClient(NeonAIClient):
 
         # Resample the audio to the target sample rate
         y_resampled = librosa.resample(y, orig_sr=sr, target_sr=target_sr)
-        
+
         # Ensure the audio array is in the correct format (int16 for 2-byte samples)
-        y_resampled = (y_resampled * (2**(8*2 - 1))).astype(dtype)
+        y_resampled = (y_resampled * (2 ** (8 * 2 - 1))).astype(dtype)
 
         output_path = join(join(xdg_data_home(), "iris", "stt"), f"{time()}.wav")
         # Save the audio file with the new sample rate and sample width
@@ -142,27 +144,29 @@ class GradIOClient(NeonAIClient):
         """
         title = self.config.get("webui_title", "Neon AI")
         description = self.config.get("webui_description", "Chat With Neon")
+        chatbot = self.config.get("webui_chatbot_label") or description
+        speech = self.config.get("webui_mic_label") or description
         placeholder = self.config.get("webui_input_placeholder",
                                       "Ask me something")
         address = self.config.get("server_address") or "0.0.0.0"
         port = self.config.get("server_port") or 7860
 
-        chatbot = gradio.Chatbot(label=description)
+        chatbot = gradio.Chatbot(label=chatbot)
         textbox = gradio.Textbox(placeholder=placeholder)
 
         with self.chat_ui as blocks:
             # Define primary UI
             audio_input = gradio.Audio(source="microphone",
-                            type="filepath",
-                            label="Talk to NEON",
-                            auto_submit=True)
+                                       type="filepath",
+                                       label=speech,
+                                       auto_submit=True)
             gradio.ChatInterface(self.on_user_input,
                                  chatbot=chatbot,
                                  textbox=textbox,
                                  additional_inputs=[audio_input],
                                  title=title,
                                  retry_btn=None,
-                                 undo_btn=None,)
+                                 undo_btn=None, )
             tts_audio = gradio.Audio(autoplay=True, visible=True,
                                      label="Neon's Response")
             tts_button = gradio.Button("Play TTS")

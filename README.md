@@ -26,6 +26,9 @@ iris:
   languages:
     - en-us
     - uk-ua
+  webui_chatbot_label: "Neon AI"
+  webui_mic_label: "Speak with Neon"
+  webui_input_placeholder: "Chat with Neon"
 ```
 
 ## Interfacing with a Diana installation
