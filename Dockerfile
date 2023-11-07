@@ -14,7 +14,7 @@ ADD . /neon_iris
 WORKDIR /neon_iris
 
 RUN pip install wheel && \
-    pip install .[docker]
+    pip install .[gradio]
 
 COPY docker_overlay/ /
 

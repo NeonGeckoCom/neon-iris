@@ -298,6 +298,7 @@ class NeonAIClient:
                 self._connection.connection,
                 queue="neon_chat_api_request",
                 request_data=serialized)
+            LOG.debug(f"emitted {serialized.get('msg_type')}")
         except Exception as e:
             LOG.exception(e)
             self.shutdown()

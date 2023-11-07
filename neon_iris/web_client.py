@@ -23,7 +23,9 @@
 # LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE,  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-from os.path import isfile, join
+
+from os import makedirs
+from os.path import isfile, join, isdir
 from time import time
 from typing import List, Optional
 
@@ -49,6 +51,9 @@ class GradIOClient(NeonAIClient):
         self._await_response = Event()
         self._response = None
         self._current_tts = None
+        self._audio_path = join(xdg_data_home(), "iris", "stt")
+        if not isdir(self._audio_path):
+            makedirs(self._audio_path)
         self.lang = lang or self.config.get('default_lang') or \
                     self.config.get('languages', ['en-us'])[0]
         self.chat_ui = gradio.Blocks()
@@ -80,11 +85,12 @@ class GradIOClient(NeonAIClient):
                    username: Optional[str] = None,
                    user_profiles: Optional[list] = None):
         """
-        @param audio_file: path to audio file to send to speech module
+        @param audio_file: path to wav audio file to send to speech module
         @param lang: language code associated with request
         @param username: username associated with request
         @param user_profiles: user profiles expecting a response
         """
+        # TODO: Audio conversion is really slow here. check ovos-stt-http-server
         audio_file = self.convert_audio(audio_file)
         self._send_audio(audio_file, lang, username, user_profiles)
 
@@ -107,7 +113,7 @@ class GradIOClient(NeonAIClient):
         # Ensure the audio array is in the correct format (int16 for 2-byte samples)
         y_resampled = (y_resampled * (2 ** (8 * 2 - 1))).astype(dtype)
 
-        output_path = join(join(xdg_data_home(), "iris", "stt"), f"{time()}.wav")
+        output_path = join(self._audio_path, f"{time()}.wav")
         # Save the audio file with the new sample rate and sample width
         sf.write(output_path, y_resampled, target_sr, format='WAV', subtype='PCM_16')
         LOG.info(f"Converted audio file to {output_path}")
@@ -119,8 +125,8 @@ class GradIOClient(NeonAIClient):
         @param utterance: String utterance submitted by the user
         @returns: String response from Neon (or "ERROR")
         """
-        LOG.info(args)
-        LOG.info(kwargs)
+        # TODO: This should probably queue with a separate iterator thread
+        LOG.debug(f"args={args}|kwargs={kwargs}")
         self._await_response.clear()
         self._response = None
         if utterance:
@@ -158,8 +164,7 @@ class GradIOClient(NeonAIClient):
             # Define primary UI
             audio_input = gradio.Audio(source="microphone",
                                        type="filepath",
-                                       label=speech,
-                                       auto_submit=True)
+                                       label=speech)
             gradio.ChatInterface(self.on_user_input,
                                  chatbot=chatbot,
                                  textbox=textbox,
