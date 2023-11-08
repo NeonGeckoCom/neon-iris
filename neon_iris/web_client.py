@@ -83,13 +83,35 @@ class GradIOClient(NeonAIClient):
         return sid
 
     def update_profile(self, stt_lang: str, tts_lang: str, tts_lang_2: str,
-                       session_id: str):
+                       time: int, date: str, uom: str, city: str, state: str,
+                       country: str, first: str, middle: str, last: str,
+                       pref_name: str, email: str, session_id: str):
         """
         Callback to handle user settings changes from the web UI
         """
+        location_dict = dict()
+        if any((city, state, country)):
+            from neon_utils.location_utils import get_coordinates, get_timezone
+            try:
+                location_dict = {"city": city, "state": state,
+                                 "country": country}
+                lat, lon = get_coordinates(location_dict)
+                location_dict["lat"] = lat
+                location_dict["lng"] = lon
+                location_dict["tz"], location_dict["utc"] = get_timezone(lat,
+                                                                         lon)
+                LOG.debug(f"Got location update: {location_dict}")
+            except Exception as e:
+                LOG.exception(e)
+
         profile_update = {"speech": {"stt_language": stt_lang,
                                      "tts_language": tts_lang,
-                                     "secondary_tts_language": tts_lang_2}}
+                                     "secondary_tts_language": tts_lang_2},
+                          "units": {"time": time, "date": date, "measure": uom},
+                          "location": location_dict,
+                          "user": {"first_name": first, "middle_name": middle,
+                                   "last_name": last,
+                                   "preferred_name": pref_name, "email": email}}
         old_profile = self._profiles.get(session_id) or self.user_config
         self._profiles[session_id] = merge_dict(old_profile, profile_update)
         LOG.info(f"Updated profile for: {session_id}")
@@ -216,18 +238,35 @@ class GradIOClient(NeonAIClient):
                                               choices=[None] +
                                               self.supported_languages,
                                               value=None)
-                    submit = gradio.Button("Update User Settings")
                 with gradio.Column():
-                    # TODO: Unit settings
-                    pass
+                    time_format = gradio.Radio(label="Time Format",
+                                               choices=[12, 24],
+                                               value=12)
+                    date_format = gradio.Radio(label="Date Format",
+                                               choices=["MDY", "YMD", "DMY",
+                                                        "YDM"],
+                                               value="MDY")
+                    unit_of_measure = gradio.Radio(label="Units of Measure",
+                                                   choices=["imperial",
+                                                            "metric"],
+                                                   value="imperial")
                 with gradio.Column():
-                    # TODO: Location settings
-                    pass
+                    city = gradio.Textbox(label="City")
+                    state = gradio.Textbox(label="State")
+                    country = gradio.Textbox(label="Country")
                 with gradio.Column():
-                    # TODO Name settings
-                    pass
+                    first_name = gradio.Textbox(label="First Name")
+                    middle_name = gradio.Textbox(label="Middle Name")
+                    last_name = gradio.Textbox(label="Last Name")
+                    pref_name = gradio.Textbox(label="Preferred Name")
+                    email_addr = gradio.Textbox(label="Email Address")
+                    # TODO: DoB, pic, about, phone?
+            submit = gradio.Button("Update User Settings")
             submit.click(self.update_profile,
-                         inputs=[stt_lang, tts_lang, tts_lang_2, client_session],
+                         inputs=[stt_lang, tts_lang, tts_lang_2, time_format,
+                                 date_format, unit_of_measure, city, state,
+                                 country, first_name, middle_name, last_name,
+                                 pref_name, email_addr, client_session],
                          outputs=[client_session])
             blocks.launch(server_name=address, server_port=port)
 
