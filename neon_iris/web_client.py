@@ -27,7 +27,7 @@
 from os import makedirs
 from os.path import isfile, join, isdir
 from time import time
-from typing import List, Optional
+from typing import List, Optional, Dict
 from uuid import uuid4
 
 import gradio
@@ -36,6 +36,8 @@ from threading import Event
 from ovos_bus_client import Message
 from ovos_config import Configuration
 from ovos_utils import LOG
+from ovos_utils.json_helper import merge_dict
+
 from neon_utils.file_utils import decode_base64_string_to_file
 from ovos_utils.xdg_utils import xdg_data_home
 
@@ -52,6 +54,7 @@ class GradIOClient(NeonAIClient):
         self._await_response = Event()
         self._response = None
         self._current_tts = dict()
+        self._profiles: Dict[str, dict] = dict()
         self._audio_path = join(xdg_data_home(), "iris", "stt")
         if not isdir(self._audio_path):
             makedirs(self._audio_path)
@@ -75,6 +78,8 @@ class GradIOClient(NeonAIClient):
     def _start_session(self):
         sid = uuid4().hex
         self._current_tts[sid] = None
+        self._profiles[sid] = self.user_config
+        self._profiles[sid]['user']['username'] = sid
         return sid
 
     def update_profile(self, stt_lang: str, tts_lang: str, tts_lang_2: str,
@@ -82,16 +87,12 @@ class GradIOClient(NeonAIClient):
         """
         Callback to handle user settings changes from the web UI
         """
-        # TODO: Per-client config. The current method of referencing
-        #  `self._user_config` means every user shares one configuration which
-        #  does not scale. This client should probably override the
-        #  `self.user_config` property and implement a method for storing user
-        #  configuration in cookies or similar.
         profile_update = {"speech": {"stt_language": stt_lang,
                                      "tts_language": tts_lang,
                                      "secondary_tts_language": tts_lang_2}}
-        from neon_utils.user_utils import apply_local_user_profile_updates
-        apply_local_user_profile_updates(profile_update, self._user_config)
+        old_profile = self._profiles.get(session_id) or self.user_config
+        self._profiles[session_id] = merge_dict(old_profile, profile_update)
+        LOG.info(f"Updated profile for: {session_id}")
         return session_id
 
     def send_audio(self, audio_file: str, lang: str = "en-us",
@@ -145,14 +146,17 @@ class GradIOClient(NeonAIClient):
         LOG.debug(f"args={args}|kwargs={kwargs}")
         self._await_response.clear()
         self._response = None
+        gradio_id = args[2]
         if utterance:
             LOG.info(f"Sending utterance: {utterance} with lang: {self.lang}")
-            self.send_utterance(utterance, self.lang,
-                                context={"gradio": {"session": args[2]}})
+            self.send_utterance(utterance, self.lang, username=gradio_id,
+                                user_profiles=[self._profiles[gradio_id]],
+                                context={"gradio": {"session": gradio_id}})
         else:
             LOG.info(f"Sending audio: {args[1]} with lang: {self.lang}")
-            self.send_audio(args[1], self.lang,
-                            context={"gradio": {"session": args[2]}})
+            self.send_audio(args[1], self.lang, username=gradio_id,
+                            user_profiles=[self._profiles[gradio_id]],
+                            context={"gradio": {"session": gradio_id}})
         self._await_response.wait(30)
         self._response = self._response or "ERROR"
         LOG.info(f"Got response={self._response}")
