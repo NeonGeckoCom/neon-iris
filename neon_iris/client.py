@@ -38,6 +38,7 @@ from time import time
 from typing import Optional
 from uuid import uuid4
 from ovos_bus_client.message import Message
+from ovos_utils.json_helper import merge_dict
 from pika.exceptions import StreamLostError
 from neon_utils.configuration_utils import get_neon_user_config
 from neon_utils.mq_utils import NeonMQHandler
@@ -228,27 +229,31 @@ class NeonAIClient:
 
     def send_utterance(self, utterance: str, lang: str = "en-us",
                        username: Optional[str] = None,
-                       user_profiles: Optional[list] = None):
+                       user_profiles: Optional[list] = None,
+                       context: Optional[dict] = None):
         """
         Optionally override this to queue text inputs or do any pre-parsing
         :param utterance: utterance to submit to skills module
         :param lang: language code associated with request
         :param username: username associated with request
         :param user_profiles: user profiles expecting a response
+        :param context: Optional dict context to add to emitted message
         """
-        self._send_utterance(utterance, lang, username, user_profiles)
+        self._send_utterance(utterance, lang, username, user_profiles, context)
 
     def send_audio(self, audio_file: str, lang: str = "en-us",
                    username: Optional[str] = None,
-                   user_profiles: Optional[list] = None):
+                   user_profiles: Optional[list] = None,
+                   context: Optional[dict] = None):
         """
         Optionally override this to queue audio inputs or do any pre-parsing
         :param audio_file: path to audio file to send to speech module
         :param lang: language code associated with request
         :param username: username associated with request
         :param user_profiles: user profiles expecting a response
+        :param context: Optional dict context to add to emitted message
         """
-        self._send_audio(audio_file, lang, username, user_profiles)
+        self._send_audio(audio_file, lang, username, user_profiles, context)
 
     def _build_message(self, msg_type: str, data: dict,
                        username: Optional[str] = None,
@@ -267,7 +272,9 @@ class NeonAIClient:
                         })
 
     def _send_utterance(self, utterance: str, lang: str,
-                        username: str, user_profiles: list):
+                        username: str, user_profiles: list,
+                        context: Optional[dict] = None):
+        context = context or dict()
         username = username or self.default_username
         user_profiles = user_profiles or [self.user_config]
         message = self._build_message("recognizer_loop:utterance",
@@ -275,11 +282,14 @@ class NeonAIClient:
                                        "lang": lang}, username, user_profiles)
         serialized = {"msg_type": message.msg_type,
                       "data": message.data,
-                      "context": message.context}
+                      "context": merge_dict(message.context, context,
+                                            new_only=True)}
         self._send_serialized_message(serialized)
 
     def _send_audio(self, audio_file: str, lang: str,
-                    username: str, user_profiles: list):
+                    username: str, user_profiles: list,
+                    context: Optional[dict] = None):
+        context = context or dict()
         audio_data = encode_file_to_base64_string(audio_file)
         message = self._build_message("neon.audio_input",
                                       {"lang": lang,
@@ -289,7 +299,8 @@ class NeonAIClient:
                                       username, user_profiles)
         serialized = {"msg_type": message.msg_type,
                       "data": message.data,
-                      "context": message.context}
+                      "context": merge_dict(message.context, context,
+                                            new_only=True)}
         self._send_serialized_message(serialized)
 
     def _send_serialized_message(self, serialized: dict):
