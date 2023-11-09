@@ -63,8 +63,9 @@ class GradIOClient(NeonAIClient):
         LOG.name = "iris"
         LOG.init(self.config.get("logs"))
 
-    @property
-    def lang(self):
+    def get_lang(self, session_id: str):
+        if session_id and session_id in self._profiles:
+            return self._profiles[session_id]['speech']['stt_language']
         return self.user_config['speech']['stt_language'] or self.default_lang
 
     @property
@@ -169,14 +170,15 @@ class GradIOClient(NeonAIClient):
         self._await_response.clear()
         self._response = None
         gradio_id = args[2]
+        lang = self.get_lang(gradio_id)
         if utterance:
-            LOG.info(f"Sending utterance: {utterance} with lang: {self.lang}")
-            self.send_utterance(utterance, self.lang, username=gradio_id,
+            LOG.info(f"Sending utterance: {utterance} with lang: {lang}")
+            self.send_utterance(utterance, lang, username=gradio_id,
                                 user_profiles=[self._profiles[gradio_id]],
                                 context={"gradio": {"session": gradio_id}})
         else:
-            LOG.info(f"Sending audio: {args[1]} with lang: {self.lang}")
-            self.send_audio(args[1], self.lang, username=gradio_id,
+            LOG.info(f"Sending audio: {args[1]} with lang: {lang}")
+            self.send_audio(args[1], lang, username=gradio_id,
                             user_profiles=[self._profiles[gradio_id]],
                             context={"gradio": {"session": gradio_id}})
         self._await_response.wait(30)
@@ -228,12 +230,13 @@ class GradIOClient(NeonAIClient):
             # Define settings UI
             with gradio.Row():
                 with gradio.Column():
+                    lang = self.get_lang(client_session.value)
                     stt_lang = gradio.Radio(label="Input Language",
                                             choices=self.supported_languages,
-                                            value=self.lang)
+                                            value=lang)
                     tts_lang = gradio.Radio(label="Response Language",
                                             choices=self.supported_languages,
-                                            value=self.lang)
+                                            value=lang)
                     tts_lang_2 = gradio.Radio(label="Second Response Language",
                                               choices=[None] +
                                               self.supported_languages,
