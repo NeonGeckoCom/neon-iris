@@ -128,10 +128,22 @@ class NeonAIClient:
         Override this method to handle Neon Responses
         """
         channel.basic_ack(delivery_tag=method.delivery_tag)
+        recv_time = time()
         response = b64_to_dict(body)
         message = Message(response.get('msg_type'), response.get('data'),
                           response.get('context'))
-        LOG.info(message.msg_type)
+
+        # Get timing data and log
+        message.context.setdefault("timing", {})
+        resp_time = message.context['timing'].get('response_sent', recv_time)
+        if recv_time != resp_time:
+            transit_time = recv_time - resp_time
+            message.context['timing']['mq_from_core'] = transit_time
+            LOG.debug(f"Response MQ time={transit_time}")
+        handling_time = recv_time - message.context['timing'].get('client_sent',
+                                                                  recv_time)
+        LOG.info(f"{message.msg_type} handled in {handling_time}")
+
         if message.msg_type == "klat.response":
             LOG.info("Handling klat response event")
             self.handle_klat_response(message)
@@ -267,6 +279,7 @@ class NeonAIClient:
                         "ident": ident or str(time()),
                         "username": username,
                         "user_profiles": user_profiles,
+                        "timing": {},
                         "mq": {"routing_key": self.uid,
                                "message_id": self.connection.create_unique_id()}
                         })
@@ -284,6 +297,7 @@ class NeonAIClient:
                       "data": message.data,
                       "context": merge_dict(message.context, context,
                                             new_only=True)}
+        serialized['context']['timing']['client_sent'] = time()
         self._send_serialized_message(serialized)
 
     def _send_audio(self, audio_file: str, lang: str,
@@ -301,6 +315,7 @@ class NeonAIClient:
                       "data": message.data,
                       "context": merge_dict(message.context, context,
                                             new_only=True)}
+        serialized['context']['timing']['client_sent'] = time()
         self._send_serialized_message(serialized)
 
     def _send_serialized_message(self, serialized: dict):
