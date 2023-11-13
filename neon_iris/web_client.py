@@ -27,7 +27,7 @@
 from os import makedirs
 from os.path import isfile, join, isdir
 from time import time
-from typing import List, Optional, Dict
+from typing import List, Dict
 from uuid import uuid4
 
 import gradio
@@ -124,10 +124,12 @@ class GradIOClient(NeonAIClient):
         @param utterance: String utterance submitted by the user
         @returns: String response from Neon (or "ERROR")
         """
+        input_time = time()
         LOG.debug(f"Input received")
         if not self._await_response.wait(30):
             LOG.error("Previous response not completed after 30 seconds")
         LOG.debug(f"args={args}|kwargs={kwargs}")
+        in_queue = time() - input_time
         self._await_response.clear()
         self._response = None
         gradio_id = args[2]
@@ -136,12 +138,16 @@ class GradIOClient(NeonAIClient):
             LOG.info(f"Sending utterance: {utterance} with lang: {lang}")
             self.send_utterance(utterance, lang, username=gradio_id,
                                 user_profiles=[self._profiles[gradio_id]],
-                                context={"gradio": {"session": gradio_id}})
+                                context={"gradio": {"session": gradio_id},
+                                         "timing": {"wait_in_queue": in_queue,
+                                                    "gradio_sent": time()}})
         else:
             LOG.info(f"Sending audio: {args[1]} with lang: {lang}")
             self.send_audio(args[1], lang, username=gradio_id,
                             user_profiles=[self._profiles[gradio_id]],
-                            context={"gradio": {"session": gradio_id}})
+                            context={"gradio": {"session": gradio_id},
+                                     "timing": {"wait_in_queue": in_queue,
+                                                "gradio_sent": time()}})
         self._await_response.wait(30)
         self._response = self._response or "ERROR"
         LOG.info(f"Got response={self._response}")

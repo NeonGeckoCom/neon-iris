@@ -41,6 +41,7 @@ from ovos_bus_client.message import Message
 from ovos_utils.json_helper import merge_dict
 from pika.exceptions import StreamLostError
 from neon_utils.configuration_utils import get_neon_user_config
+from neon_utils.metrics_utils import Stopwatch
 from neon_utils.mq_utils import NeonMQHandler
 from neon_utils.socket_utils import b64_to_dict
 from neon_utils.file_utils import decode_base64_string_to_file, \
@@ -48,6 +49,8 @@ from neon_utils.file_utils import decode_base64_string_to_file, \
 from neon_utils.logger import LOG
 from ovos_utils.xdg_utils import xdg_config_home, xdg_cache_home
 from ovos_config.config import Configuration
+
+_stopwatch = Stopwatch()
 
 
 class NeonAIClient:
@@ -129,7 +132,9 @@ class NeonAIClient:
         """
         channel.basic_ack(delivery_tag=method.delivery_tag)
         recv_time = time()
-        response = b64_to_dict(body)
+        with _stopwatch:
+            response = b64_to_dict(body)
+        LOG.debug(f"Message deserialized in {_stopwatch.time}s")
         message = Message(response.get('msg_type'), response.get('data'),
                           response.get('context'))
 
@@ -139,7 +144,7 @@ class NeonAIClient:
         if recv_time != resp_time:
             transit_time = recv_time - resp_time
             message.context['timing']['mq_from_core'] = transit_time
-            LOG.debug(f"Response MQ time={transit_time}")
+            LOG.debug(f"Response MQ transit time={transit_time}")
         handling_time = recv_time - message.context['timing'].get('client_sent',
                                                                   recv_time)
         LOG.info(f"{message.msg_type} handled in {handling_time}")
