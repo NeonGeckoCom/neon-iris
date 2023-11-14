@@ -143,12 +143,12 @@ class NeonAIClient:
         resp_time = message.context['timing'].get('response_sent', recv_time)
         if recv_time != resp_time:
             transit_time = recv_time - resp_time
-            message.context['timing']['mq_from_core'] = transit_time
+            message.context['timing']['client_from_core'] = transit_time
             LOG.debug(f"Response MQ transit time={transit_time}")
         handling_time = recv_time - message.context['timing'].get('client_sent',
                                                                   recv_time)
         LOG.info(f"{message.msg_type} handled in {handling_time}")
-
+        LOG.debug(f"{pformat(message.context['timing'])}")
         if message.msg_type == "klat.response":
             LOG.info("Handling klat response event")
             self.handle_klat_response(message)
@@ -302,7 +302,6 @@ class NeonAIClient:
                       "data": message.data,
                       "context": merge_dict(message.context, context,
                                             new_only=True)}
-        serialized['context']['timing']['client_sent'] = time()
         self._send_serialized_message(serialized)
 
     def _send_audio(self, audio_file: str, lang: str,
@@ -320,11 +319,15 @@ class NeonAIClient:
                       "data": message.data,
                       "context": merge_dict(message.context, context,
                                             new_only=True)}
-        serialized['context']['timing']['client_sent'] = time()
         self._send_serialized_message(serialized)
 
     def _send_serialized_message(self, serialized: dict):
         try:
+            serialized['context']['timing']['client_sent'] = time()
+            if serialized['context']['timing'].get('gradio_sent'):
+                serialized['context']['timing']['iris_input_handling'] = \
+                    serialized['context']['timing']['client_sent'] - \
+                    serialized['context']['timing']['gradio_sent']
             self.connection.emit_mq_message(
                 self._connection.connection,
                 queue="neon_chat_api_request",

@@ -148,7 +148,9 @@ class GradIOClient(NeonAIClient):
                             context={"gradio": {"session": gradio_id},
                                      "timing": {"wait_in_queue": in_queue,
                                                 "gradio_sent": time()}})
-        self._await_response.wait(30)
+        if not self._await_response.wait(30):
+            LOG.error("No response received after 30s")
+            self._await_response.set()
         self._response = self._response or "ERROR"
         LOG.info(f"Got response={self._response}")
         return self._response
