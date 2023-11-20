@@ -61,7 +61,8 @@ class NeonAIClient:
         self.client_name = "unknown"
         self._config = mq_config or dict(Configuration()).get("MQ")
         self._connection = self._init_mq_connection()
-
+        self._languages = dict()
+        self._language_init = Event()
         config_dir = config_dir or join(xdg_config_home(), "neon", "neon_iris")
 
         self._user_config = get_neon_user_config(config_dir)
@@ -70,6 +71,21 @@ class NeonAIClient:
 
         self.audio_cache_dir = join(xdg_cache_home(), "neon", "neon_iris")
         makedirs(self.audio_cache_dir, exist_ok=True)
+
+        # Collect supported languages
+        message = self._build_message("ovos.languages.stt", {})
+        self._send_message(message)
+        message = self._build_message("ovos.languages.tts", {})
+        self._send_message(message)
+        if self._language_init.wait(30):
+            LOG.info(f"Got language support: {self._languages}")
+        else:
+            self._languages['stt'] = self._config.get('iris',
+                                                      {}).get('languages')
+            self._languages['tts'] = self._config.get('iris',
+                                                      {}).get('languages')
+            LOG.warning(f"Timed out updating languages. Using configuration: "
+                        f"{self._languages}")
 
     @property
     def uid(self) -> str:
@@ -160,6 +176,10 @@ class NeonAIClient:
             self._handle_clear_data(message)
         elif message.msg_type == "klat.error":
             self.handle_error_response(message)
+        elif message.msg_type == "ovos.languages.stt.response":
+            self._handle_supported_languages(message)
+        elif message.msg_type == "ovos.languages.tts.response":
+            self._handle_supported_languages(message)
         elif message.msg_type.endswith(".response"):
             self.handle_api_response(message)
         else:
@@ -244,6 +264,19 @@ class NeonAIClient:
         # (CACHES, PROFILE, ALL_TR, CONF_LIKES, CONF_DISLIKES, ALL_DATA,
         # ALL_MEDIA, ALL_UNITS, ALL_LANGUAGE
 
+    def _handle_supported_languages(self, message: Message):
+        if message.msg_type == "ovos.languages.stt.response":
+            LOG.debug("STT langauge response")
+            self._languages["stt"] = message.data.get("langs")
+        elif message.msg_type == "ovos.languages.tts.response":
+            LOG.debug("TTS language response")
+            self._languages["tts"] = message.data.get("langs")
+        else:
+            raise RuntimeError(f"Unexpected message type: {message.msg_type}")
+        if all((x in self._languages for x in ("stt", "tts"))):
+            LOG.info(f"Language support determined: {self._languages}")
+            self._language_init.set()
+
     def send_utterance(self, utterance: str, lang: str = "en-us",
                        username: Optional[str] = None,
                        user_profiles: Optional[list] = None,
@@ -320,6 +353,12 @@ class NeonAIClient:
                       "data": message.data,
                       "context": merge_dict(message.context, context,
                                             new_only=True)}
+        self._send_serialized_message(serialized)
+
+    def _send_message(self, message: Message):
+        serialized = {"msg_type": message.msg_type,
+                      "data": message.data,
+                      "context": message.context}
         self._send_serialized_message(serialized)
 
     def _send_serialized_message(self, serialized: dict):
