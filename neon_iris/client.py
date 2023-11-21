@@ -41,6 +41,7 @@ from ovos_bus_client.message import Message
 from ovos_utils.json_helper import merge_dict
 from pika.exceptions import StreamLostError
 from neon_utils.configuration_utils import get_neon_user_config
+from neon_utils.metrics_utils import Stopwatch
 from neon_utils.mq_utils import NeonMQHandler
 from neon_utils.socket_utils import b64_to_dict
 from neon_utils.file_utils import decode_base64_string_to_file, \
@@ -48,6 +49,8 @@ from neon_utils.file_utils import decode_base64_string_to_file, \
 from neon_utils.logger import LOG
 from ovos_utils.xdg_utils import xdg_config_home, xdg_cache_home
 from ovos_config.config import Configuration
+
+_stopwatch = Stopwatch()
 
 
 class NeonAIClient:
@@ -128,10 +131,24 @@ class NeonAIClient:
         Override this method to handle Neon Responses
         """
         channel.basic_ack(delivery_tag=method.delivery_tag)
-        response = b64_to_dict(body)
+        recv_time = time()
+        with _stopwatch:
+            response = b64_to_dict(body)
+        LOG.debug(f"Message deserialized in {_stopwatch.time}s")
         message = Message(response.get('msg_type'), response.get('data'),
                           response.get('context'))
-        LOG.info(message.msg_type)
+
+        # Get timing data and log
+        message.context.setdefault("timing", {})
+        resp_time = message.context['timing'].get('response_sent', recv_time)
+        if recv_time != resp_time:
+            transit_time = recv_time - resp_time
+            message.context['timing']['client_from_core'] = transit_time
+            LOG.debug(f"Response MQ transit time={transit_time}")
+        handling_time = recv_time - message.context['timing'].get('client_sent',
+                                                                  recv_time)
+        LOG.info(f"{message.msg_type} handled in {handling_time}")
+        LOG.debug(f"{pformat(message.context['timing'])}")
         if message.msg_type == "klat.response":
             LOG.info("Handling klat response event")
             self.handle_klat_response(message)
@@ -267,6 +284,7 @@ class NeonAIClient:
                         "ident": ident or str(time()),
                         "username": username,
                         "user_profiles": user_profiles,
+                        "timing": {},
                         "mq": {"routing_key": self.uid,
                                "message_id": self.connection.create_unique_id()}
                         })
@@ -305,6 +323,11 @@ class NeonAIClient:
 
     def _send_serialized_message(self, serialized: dict):
         try:
+            serialized['context']['timing']['client_sent'] = time()
+            if serialized['context']['timing'].get('gradio_sent'):
+                serialized['context']['timing']['iris_input_handling'] = \
+                    serialized['context']['timing']['client_sent'] - \
+                    serialized['context']['timing']['gradio_sent']
             self.connection.emit_mq_message(
                 self._connection.connection,
                 queue="neon_chat_api_request",

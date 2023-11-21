@@ -27,7 +27,7 @@
 from os import makedirs
 from os.path import isfile, join, isdir
 from time import time
-from typing import List, Optional, Dict
+from typing import List, Dict
 from uuid import uuid4
 
 import gradio
@@ -118,55 +118,18 @@ class GradIOClient(NeonAIClient):
         LOG.info(f"Updated profile for: {session_id}")
         return session_id
 
-    def send_audio(self, audio_file: str, lang: str = "en-us",
-                   username: Optional[str] = None,
-                   user_profiles: Optional[list] = None,
-                   context: Optional[dict] = None):
-        """
-        @param audio_file: path to wav audio file to send to speech module
-        @param lang: language code associated with request
-        @param username: username associated with request
-        @param user_profiles: user profiles expecting a response
-        """
-        # TODO: Audio conversion is really slow here. check ovos-stt-http-server
-        audio_file = self.convert_audio(audio_file)
-        self._send_audio(audio_file, lang, username, user_profiles, context)
-
-    def convert_audio(self, audio_file: str, target_sr=16000, target_channels=1,
-                      dtype='int16') -> str:
-        """
-        @param audio_file: path to audio file to convert for speech model
-        @returns: path to converted audio file
-        """
-        # Load the audio file
-        y, sr = librosa.load(audio_file, sr=None, mono=False)  # Load without changing sample rate or channels
-
-        # If the file has more than one channel, mix it down to one channel
-        if y.ndim > 1 and target_channels == 1:
-            y = librosa.to_mono(y)
-
-        # Resample the audio to the target sample rate
-        y_resampled = librosa.resample(y, orig_sr=sr, target_sr=target_sr)
-
-        # Ensure the audio array is in the correct format (int16 for 2-byte samples)
-        y_resampled = (y_resampled * (2 ** (8 * 2 - 1))).astype(dtype)
-
-        output_path = join(self._audio_path, f"{time()}.wav")
-        # Save the audio file with the new sample rate and sample width
-        sf.write(output_path, y_resampled, target_sr, format='WAV', subtype='PCM_16')
-        LOG.info(f"Converted audio file to {output_path}")
-        return output_path
-
     def on_user_input(self, utterance: str, *args, **kwargs) -> str:
         """
         Callback to handle textual user input
         @param utterance: String utterance submitted by the user
         @returns: String response from Neon (or "ERROR")
         """
+        input_time = time()
         LOG.debug(f"Input received")
         if not self._await_response.wait(30):
             LOG.error("Previous response not completed after 30 seconds")
         LOG.debug(f"args={args}|kwargs={kwargs}")
+        in_queue = time() - input_time
         self._await_response.clear()
         self._response = None
         gradio_id = args[2]
@@ -175,13 +138,19 @@ class GradIOClient(NeonAIClient):
             LOG.info(f"Sending utterance: {utterance} with lang: {lang}")
             self.send_utterance(utterance, lang, username=gradio_id,
                                 user_profiles=[self._profiles[gradio_id]],
-                                context={"gradio": {"session": gradio_id}})
+                                context={"gradio": {"session": gradio_id},
+                                         "timing": {"wait_in_queue": in_queue,
+                                                    "gradio_sent": time()}})
         else:
             LOG.info(f"Sending audio: {args[1]} with lang: {lang}")
             self.send_audio(args[1], lang, username=gradio_id,
                             user_profiles=[self._profiles[gradio_id]],
-                            context={"gradio": {"session": gradio_id}})
-        self._await_response.wait(30)
+                            context={"gradio": {"session": gradio_id},
+                                     "timing": {"wait_in_queue": in_queue,
+                                                "gradio_sent": time()}})
+        if not self._await_response.wait(30):
+            LOG.error("No response received after 30s")
+            self._await_response.set()
         self._response = self._response or "ERROR"
         LOG.info(f"Got response={self._response}")
         return self._response
