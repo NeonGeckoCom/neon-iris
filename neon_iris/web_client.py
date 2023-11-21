@@ -316,6 +316,15 @@ class GradIOClient(NeonAIClient):
         """
         LOG.debug(f"Got {message.msg_type}: {message.data}")
 
+    def _handle_profile_update(self, message: Message):
+        updated_profile = message.data["profile"]
+        session_id = updated_profile['user']['username']
+        if session_id in self._profiles:
+            LOG.info(f"Got profile update for {session_id}")
+            self._profiles[session_id] = updated_profile
+        else:
+            LOG.warning(f"Ignoring profile update for {session_id}")
+
     def handle_error_response(self, message: Message):
         """
         Handle an error response from the MQ service attached to Neon. This
