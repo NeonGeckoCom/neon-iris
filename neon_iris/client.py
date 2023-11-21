@@ -72,20 +72,23 @@ class NeonAIClient:
         self.audio_cache_dir = join(xdg_cache_home(), "neon", "neon_iris")
         makedirs(self.audio_cache_dir, exist_ok=True)
 
+        config = Configuration().get("iris", {})
+
         # Collect supported languages
-        message = self._build_message("ovos.languages.stt", {})
-        self._send_message(message)
-        message = self._build_message("ovos.languages.tts", {})
-        self._send_message(message)
-        if self._language_init.wait(30):
-            LOG.info(f"Got language support: {self._languages}")
-        else:
-            self._languages['stt'] = self._config.get('iris',
-                                                      {}).get('languages')
-            self._languages['tts'] = self._config.get('iris',
-                                                      {}).get('languages')
-            LOG.warning(f"Timed out updating languages. Using configuration: "
-                        f"{self._languages}")
+        if config.get("enable_lang_api"):
+            message = self._build_message("ovos.languages.stt", {})
+            self._send_message(message)
+            message = self._build_message("ovos.languages.tts", {})
+            self._send_message(message)
+
+            if self._language_init.wait(30):
+                LOG.info(f"Got language support: {self._languages}")
+
+        if not self._languages:
+            lang_config = config.get('languages') or []
+            self._languages['stt'] = lang_config
+            self._languages['tts'] = lang_config
+            LOG.debug(f"Using supported langs configuration: {self._languages}")
 
     @property
     def uid(self) -> str:
