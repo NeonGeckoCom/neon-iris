@@ -16,4 +16,28 @@ iris:
     - en-us
     - fr-fr
     - es-es
+    - de-de
+    - it-it
     - uk-ua
+    - nl-nl
+    - pt-pt
+    - ca-es
+
+location:
+  city:
+    code: Renton
+    name: Renton
+    state:
+      code: WA
+      name: Washington
+      country:
+        code: US
+        name: United States
+  coordinate:
+    latitude: 47.482880
+    longitude: -122.217064
+  timezone:
+    code: America/Los_Angeles
+    name: Pacific Standard Time
+    dstOffset: 3600000
+    offset: -28800000

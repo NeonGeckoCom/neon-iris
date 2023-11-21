@@ -132,8 +132,12 @@ def start_listener():
 @neon_iris_cli.command(help="Create a GradIO Client session")
 def start_gradio():
     from neon_iris.web_client import GradIOClient
-    chat = GradIOClient()
-    chat.run()
+    _print_config()
+    try:
+        chat = GradIOClient()
+        chat.run()
+    except OSError:
+        click.echo("Unable to connect to MQ server")
 
 
 @neon_iris_cli.command(help="Transcribe an audio file")
