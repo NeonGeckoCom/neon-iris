@@ -120,11 +120,11 @@ class GradIOClient(NeonAIClient):
     def on_user_input(self, utterance: str,
                       chat_history: List[Tuple[str, str]],
                       audio_input: str,
-                      client_session: str) -> (List[Tuple[str, str]], str, str, None):
+                      client_session: str) -> (List[Tuple[str, str]], str, str, None, str):
         """
         Callback to handle textual user input
         @param utterance: String utterance submitted by the user
-        @returns: Input box contents, Updated chat history, Gradio session ID
+        @returns: Input box contents, Updated chat history, Gradio session ID, audio input, audio output
         """
         input_time = time()
         LOG.debug(f"Input received")
@@ -150,6 +150,7 @@ class GradIOClient(NeonAIClient):
                             context={"gradio": {"session": gradio_id},
                                      "timing": {"wait_in_queue": in_queue,
                                                 "gradio_sent": time()}})
+            chat_history.append((audio_input, None))
         if not self._await_response.wait(30):
             LOG.error("No response received after 30s")
             self._await_response.set()
@@ -157,14 +158,15 @@ class GradIOClient(NeonAIClient):
         LOG.info(f"Got response={self._response}")
         if utterance:
             chat_history.append((utterance, self._response))
-        elif self._transcribed:
+        elif isinstance(self._transcribed, str):
             LOG.info(f"Got transcript: {self._transcribed}")
-            chat_history.append((self._transcribed, self._response))
-        return chat_history, gradio_id, "", None
+            chat_history.append((self._transcribed,  self._response))
+        chat_history.append((None, (self._current_tts[gradio_id], None)))
+        return chat_history, gradio_id, "", None, self._current_tts[gradio_id]
 
-    def play_tts(self, session_id: str):
-        LOG.info(f"Playing most recent TTS file {self._current_tts}")
-        return self._current_tts.get(session_id), session_id
+    # def play_tts(self, session_id: str):
+    #     LOG.info(f"Playing most recent TTS file {self._current_tts}")
+    #     return self._current_tts.get(session_id), session_id
 
     def run(self):
         """
@@ -197,24 +199,22 @@ class GradIOClient(NeonAIClient):
                                            scale=2)
                 submit = gradio.Button(value="Submit",
                                        variant="primary")
+            tts_audio = gradio.Audio(autoplay=True, visible=False)
             submit.click(self.on_user_input,
                          inputs=[textbox, chatbot, audio_input,
                                  client_session],
                          outputs=[chatbot, client_session, textbox,
-                                  audio_input])
+                                  audio_input, tts_audio])
             textbox.submit(self.on_user_input,
                            inputs=[textbox, chatbot, audio_input,
                                    client_session],
                            outputs=[chatbot, client_session, textbox,
-                                    audio_input])
-            with gradio.Row():
-                tts_audio = gradio.Audio(autoplay=True, visible=True,
-                                         label="Neon's Response",
-                                         scale=10)
-                tts_button = gradio.Button("Play TTS")
-                tts_button.click(self.play_tts,
-                                 inputs=[client_session],
-                                 outputs=[tts_audio, client_session])
+                                    audio_input, tts_audio])
+            # with gradio.Row():
+            #     tts_button = gradio.Button("Play TTS")
+            #     tts_button.click(self.play_tts,
+            #                      inputs=[client_session],
+            #                      outputs=[tts_audio, client_session])
             # Define settings UI
             with gradio.Row():
                 with gradio.Column():
