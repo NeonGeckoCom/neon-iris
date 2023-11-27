@@ -284,6 +284,7 @@ class NeonAIClient:
                         "ident": ident or str(time()),
                         "username": username,
                         "user_profiles": user_profiles,
+                        "neon_should_respond": True,
                         "timing": {},
                         "mq": {"routing_key": self.uid,
                                "message_id": self.connection.create_unique_id()}

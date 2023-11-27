@@ -150,7 +150,7 @@ class GradIOClient(NeonAIClient):
                             context={"gradio": {"session": gradio_id},
                                      "timing": {"wait_in_queue": in_queue,
                                                 "gradio_sent": time()}})
-            chat_history.append((audio_input, None))
+            chat_history.append(((audio_input, None), None))
         if not self._await_response.wait(30):
             LOG.error("No response received after 30s")
             self._await_response.set()
