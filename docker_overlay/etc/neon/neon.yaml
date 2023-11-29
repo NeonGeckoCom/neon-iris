@@ -15,16 +15,7 @@ iris:
   server_address: "0.0.0.0"
   server_port: 7860
   default_lang: en-us
-  languages:
-    - en-us
-    - fr-fr
-    - es-es
-    - de-de
-    - it-it
-    - uk-ua
-    - nl-nl
-    - pt-pt
-    - ca-es
+  enable_lang_api: True
 
 location:
   city:
