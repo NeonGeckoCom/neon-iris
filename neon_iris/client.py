@@ -76,13 +76,11 @@ class NeonAIClient:
 
         # Collect supported languages
         if config.get("enable_lang_api"):
-            message = self._build_message("ovos.languages.stt", {})
-            self._send_message(message)
-            message = self._build_message("ovos.languages.tts", {})
+            message = self._build_message("neon.languages.get", {})
             self._send_message(message)
 
             if self._language_init.wait(30):
-                LOG.info(f"Got language support: {self._languages}")
+                LOG.debug(f"Got language support: {self._languages}")
 
         if not self._languages:
             lang_config = config.get('languages') or []
@@ -179,9 +177,7 @@ class NeonAIClient:
             self._handle_clear_data(message)
         elif message.msg_type == "klat.error":
             self.handle_error_response(message)
-        elif message.msg_type == "ovos.languages.stt.response":
-            self._handle_supported_languages(message)
-        elif message.msg_type == "ovos.languages.tts.response":
+        elif message.msg_type == "neon.languages.get.response":
             self._handle_supported_languages(message)
         elif message.msg_type.endswith(".response"):
             self.handle_api_response(message)
@@ -268,17 +264,12 @@ class NeonAIClient:
         # ALL_MEDIA, ALL_UNITS, ALL_LANGUAGE
 
     def _handle_supported_languages(self, message: Message):
-        if message.msg_type == "ovos.languages.stt.response":
-            LOG.debug("STT langauge response")
-            self._languages["stt"] = message.data.get("langs")
-        elif message.msg_type == "ovos.languages.tts.response":
-            LOG.debug("TTS language response")
-            self._languages["tts"] = message.data.get("langs")
-        else:
-            raise RuntimeError(f"Unexpected message type: {message.msg_type}")
-        if all((x in self._languages for x in ("stt", "tts"))):
-            LOG.info(f"Language support determined: {self._languages}")
-            self._language_init.set()
+        self._languages = message.data
+        if not all((x in self._languages for x in ("stt", "tts"))):
+            LOG.warning(f"Language support incomplete response: {self._languages}")
+        self._languages['stt'].sort()
+        self._languages['tts'].sort()
+        self._language_init.set()
 
     def send_utterance(self, utterance: str, lang: str = "en-us",
                        username: Optional[str] = None,

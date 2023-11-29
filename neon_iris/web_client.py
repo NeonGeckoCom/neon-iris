@@ -218,7 +218,7 @@ class GradIOClient(NeonAIClient):
             # Define settings UI
             with gradio.Row():
                 with gradio.Column():
-                    lang = self.get_lang(client_session.value)
+                    lang = self.get_lang(client_session.value).split('-')[0]
                     stt_lang = gradio.Radio(label="Input Language",
                                             choices=self._languages.get("stt")
                                             or self.supported_languages,
