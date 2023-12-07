@@ -140,6 +140,14 @@ def start_gradio():
         click.echo("Unable to connect to MQ server")
 
 
+@neon_iris_cli.command(help="Query Neon Core for supported languages")
+def get_languages():
+    from neon_iris.util import query_neon
+    _print_config()
+    resp = query_neon("neon.languages.get", {})
+    click.echo(pformat(resp))
+
+
 @neon_iris_cli.command(help="Transcribe an audio file")
 @click.option('--lang', '-l', default='en-us',
               help="language of input audio")

@@ -218,16 +218,19 @@ class GradIOClient(NeonAIClient):
             # Define settings UI
             with gradio.Row():
                 with gradio.Column():
-                    lang = self.get_lang(client_session.value)
+                    lang = self.get_lang(client_session.value).split('-')[0]
                     stt_lang = gradio.Radio(label="Input Language",
-                                            choices=self.supported_languages,
+                                            choices=self._languages.get("stt")
+                                            or self.supported_languages,
                                             value=lang)
                     tts_lang = gradio.Radio(label="Response Language",
-                                            choices=self.supported_languages,
+                                            choices=self._languages.get("tts")
+                                            or self.supported_languages,
                                             value=lang)
                     tts_lang_2 = gradio.Radio(label="Second Response Language",
                                               choices=[None] +
-                                                      self.supported_languages,
+                                              (self._languages.get("tts") or
+                                               self.supported_languages),
                                               value=None)
                 with gradio.Column():
                     time_format = gradio.Radio(label="Time Format",

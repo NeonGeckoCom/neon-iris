@@ -61,7 +61,8 @@ class NeonAIClient:
         self.client_name = "unknown"
         self._config = mq_config or dict(Configuration()).get("MQ")
         self._connection = self._init_mq_connection()
-
+        self._languages = dict()
+        self._language_init = Event()
         config_dir = config_dir or join(xdg_config_home(), "neon", "neon_iris")
 
         self._user_config = get_neon_user_config(config_dir)
@@ -70,6 +71,22 @@ class NeonAIClient:
 
         self.audio_cache_dir = join(xdg_cache_home(), "neon", "neon_iris")
         makedirs(self.audio_cache_dir, exist_ok=True)
+
+        config = Configuration().get("iris", {})
+
+        # Collect supported languages
+        if config.get("enable_lang_api"):
+            message = self._build_message("neon.languages.get", {})
+            self._send_message(message)
+
+            if self._language_init.wait(30):
+                LOG.debug(f"Got language support: {self._languages}")
+
+        if not self._languages:
+            lang_config = config.get('languages') or []
+            self._languages['stt'] = lang_config
+            self._languages['tts'] = lang_config
+            LOG.debug(f"Using supported langs configuration: {self._languages}")
 
     @property
     def uid(self) -> str:
@@ -160,6 +177,8 @@ class NeonAIClient:
             self._handle_clear_data(message)
         elif message.msg_type == "klat.error":
             self.handle_error_response(message)
+        elif message.msg_type == "neon.languages.get.response":
+            self._handle_supported_languages(message)
         elif message.msg_type.endswith(".response"):
             self.handle_api_response(message)
         else:
@@ -244,6 +263,14 @@ class NeonAIClient:
         # (CACHES, PROFILE, ALL_TR, CONF_LIKES, CONF_DISLIKES, ALL_DATA,
         # ALL_MEDIA, ALL_UNITS, ALL_LANGUAGE
 
+    def _handle_supported_languages(self, message: Message):
+        self._languages = message.data
+        if not all((x in self._languages for x in ("stt", "tts"))):
+            LOG.warning(f"Language support incomplete response: {self._languages}")
+        self._languages['stt'].sort()
+        self._languages['tts'].sort()
+        self._language_init.set()
+
     def send_utterance(self, utterance: str, lang: str = "en-us",
                        username: Optional[str] = None,
                        user_profiles: Optional[list] = None,
@@ -320,6 +347,12 @@ class NeonAIClient:
                       "data": message.data,
                       "context": merge_dict(message.context, context,
                                             new_only=True)}
+        self._send_serialized_message(serialized)
+
+    def _send_message(self, message: Message):
+        serialized = {"msg_type": message.msg_type,
+                      "data": message.data,
+                      "context": message.context}
         self._send_serialized_message(serialized)
 
     def _send_serialized_message(self, serialized: dict):

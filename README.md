@@ -31,6 +31,11 @@ iris:
   webui_input_placeholder: "Chat with Neon"
 ```
 
+### Language Support
+For Neon Core deployments that support language support queries via MQ, `languages`
+may be removed and `enable_lang_api: True` added to configuration. This will use
+the reported STT/TTS supported languages in place of any `iris` configuration.
+
 ## Interfacing with a Diana installation
 The `iris` CLI includes utilities for interacting with a `Diana` backend.
 
