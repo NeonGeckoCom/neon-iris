@@ -103,7 +103,7 @@ const WebSocketHandler = (() => {
   let lastActivationTime = 0;
   const activationCooldown = 3000; // 3 seconds cooldown
   const ws = new WebSocket(`ws://localhost:8000/ws`);
-  const audio = new Audio("wake.mp3"); // Wakeword acknowledgment sound
+  const audio = new Audio("/static/wake.mp3"); // Wakeword acknowledgment sound
 
   ws.onopen = () => {
     console.info("WebSocket connection is open");

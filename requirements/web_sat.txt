@@ -5,3 +5,4 @@ resampy~=0.4.2
 openwakeword~=0.5.1
 tflite~=2.10.0
 onnxruntime
+jinja2
