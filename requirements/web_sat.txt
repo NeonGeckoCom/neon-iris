@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+aiohttp~=3.8.6
+resampy~=0.4.2
+openwakeword~=0.5.1
+tflite~=2.10.0
+onnxruntime

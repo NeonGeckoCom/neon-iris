@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Neon AI</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="chat-container">
+      <div class="chat-header">Chat with NEON AI <img src="logo.webp" /></div>
+      <button id="startButton">Start Recording</button>
+      <div class="chat-window" id="chatWindow">
+        <!-- Chat messages will appear here -->
+      </div>
+      <div id="download-area"></div>
+      <div class="input-area">
+        <input type="text" id="chatInput" placeholder="Ask me something" />
+        <button onclick="submitMessage()">Submit</button>
+      </div>
+    </div>
+  </body>
+  <!-- Silero VAD -->
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.7/dist/bundle.min.js"></script>
+  <!-- AI Code -->
+  <script src="scripts/websocket.js"></script>
+  <script src="scripts/audio.js"></script>
+</html>
