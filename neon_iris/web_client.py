@@ -59,8 +59,6 @@ class GradIOClient(NeonAIClient):
             makedirs(self._audio_path)
         self.default_lang = lang or self.config.get('default_lang')
         self.chat_ui = gradio.Blocks()
-        LOG.name = "iris"
-        LOG.init(self.config.get("logs"))
 
     def get_lang(self, session_id: str):
         if session_id and session_id in self._profiles:

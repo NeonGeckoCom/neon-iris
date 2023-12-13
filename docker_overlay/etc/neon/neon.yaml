@@ -35,3 +35,12 @@ location:
     name: Pacific Standard Time
     dstOffset: 3600000
     offset: -28800000
+
+logs:
+  name: iris
+  level: INFO
+  level_overrides:
+    error:
+      - pika
+    warning:
+      - filelock

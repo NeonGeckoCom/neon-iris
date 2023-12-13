@@ -29,7 +29,6 @@ from pprint import pformat
 
 import click
 
-from os import environ
 from os.path import expanduser, isfile
 from time import sleep
 from click_default_group import DefaultGroup
@@ -37,10 +36,6 @@ from ovos_utils.log import LOG
 
 from neon_iris.util import load_config_file
 from neon_iris.version import __version__
-
-environ.setdefault("OVOS_CONFIG_BASE_FOLDER", "neon")
-environ.setdefault("OVOS_CONFIG_FILENAME", "diana.yaml")
-# TODO: Define default config file from this package
 
 
 def _print_config():
