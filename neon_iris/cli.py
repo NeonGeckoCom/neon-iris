@@ -69,6 +69,9 @@ def start_client(mq_config, user_config, lang, audio):
     from neon_iris.client import CLIClient
     _print_config()
     if mq_config:
+        from ovos_config.locations import find_user_config
+        click.echo(f"WARNING: Configuration should me moved to: "
+                   f"{find_user_config()}.")
         mq_config = load_config_file(expanduser(mq_config))
     else:
         from ovos_config.config import Configuration
