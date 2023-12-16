@@ -118,16 +118,12 @@ class WebSatNeonClient(NeonAIClient):
         """Render the Neon AI Web UI and Voice Satellite."""
         description = self.config.get("webui_description", "Chat With Neon")
         title = self.config.get("webui_title", "Neon AI")
-        chatbot_label = self.config.get("webui_chatbot_label") or description
-        text_label = self.config.get("webui_text_label") or description
         placeholder = self.config.get("webui_input_placeholder", "Ask me something")
 
         context = {
             "request": request,
             "title": title,
             "description": description,
-            "chatbot_label": chatbot_label,
-            "text_label": text_label,
             "placeholder": placeholder,
         }
         return self.templates.TemplateResponse("index.html", context)
