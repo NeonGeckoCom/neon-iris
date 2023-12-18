@@ -333,7 +333,7 @@ class NeonAIClient:
         self._send_serialized_message(serialized)
 
     def _send_audio(self, audio_file: str, lang: str,
-                    username: str, user_profiles: list,
+                    username: Optional[str], user_profiles: Optional[list],
                     context: Optional[dict] = None):
         context = context or dict()
         audio_data = encode_file_to_base64_string(audio_file)

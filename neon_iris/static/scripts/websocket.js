@@ -39,6 +39,22 @@ function float32To16BitPCM(output, offset, input) {
   }
 }
 
+function wavBlobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onloadend = () => {
+      const base64data = reader.result;
+      // Extract the base64 part
+      const base64String = base64data.split(",")[1];
+      resolve(base64String);
+    };
+    reader.onerror = (error) => {
+      reject(error);
+    };
+  });
+}
+
 let shouldListen = false; // Global state flag for controlling VAD listening state
 let myVad; // VAD instance
 let isVadRunning = false;
@@ -53,11 +69,12 @@ async function initializeVad() {
   }
 }
 
-function handleSpeechEnd(audio) {
+async function handleSpeechEnd(audio) {
   const wavBlob = float32ArrayToWavBlob(audio);
   const audioUrl = URL.createObjectURL(wavBlob);
+  const audioOutput = await wavBlobToBase64(wavBlob);
 
-  // Save the audio as a file
+  // Save the spoken audio as a downloadable file
   const downloadArea = document.getElementById("download-area");
   if (downloadArea) {
     downloadArea.innerHTML = "";
@@ -75,16 +92,8 @@ function handleSpeechEnd(audio) {
     shouldListen = false;
   }
 
-  // Play back the audio
-  const playbackAudio = new Audio(audioUrl);
-  playbackAudio.play();
-  playbackAudio.onended = () => {
-    if (shouldListen && myVad) {
-      myVad.start();
-    } else {
-      myVad.pause();
-    }
-  };
+  // Send audio to STT
+  getAIResponse("", audioOutput);
 }
 
 function toggleListeningState() {

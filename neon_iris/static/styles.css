@@ -37,8 +37,12 @@ a:hover {
   cursor: pointer;
   outline: none;
   margin-bottom: 10px;
+  margin-top: 10px;
   transition: background-color 0.3s;
   background-color: #4caf50;
+  max-width: 50%;
+  align-content: center;
+  align-self: center;
 }
 #startButton.listening {
   background-color: #03a9f4;
@@ -50,12 +54,6 @@ a:hover {
   padding: 20px;
   background-color: #333;
   margin: 0;
-}
-.chat-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background-color: #1a1a1a;
 }
 .chat-header {
   padding: 20px;
@@ -72,9 +70,18 @@ a:hover {
   ); /* Slight increase in size on hover for dynamic effect */
 }
 .chat-window {
-  flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: 20px;
   overflow: auto;
+}
+#chatHistory {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* Align items to the start by default */
+  height: 100%;
+  overflow-y: auto; /* Allows scrolling if content overflows */
+  background-color: #1a1a1a; /* Dark background for the chat container */
 }
 .input-area {
   display: flex;
@@ -108,6 +115,36 @@ a:hover {
   color: #fff;
   text-align: center;
   font-size: 1.5em;
+}
+/* Style for user messages */
+.user-message {
+  background-color: #007bff; /* Blue background for user messages */
+  color: #fff; /* White text color for user messages */
+  padding: 5px 10px;
+  margin: 5px 0;
+  border-radius: 10px;
+  align-self: flex-end; /* Right-align user messages */
+  max-width: 60%;
+  word-wrap: break-word; /* Wrap long words if needed */
+}
+
+/* Style for AI messages */
+.ai-message {
+  background-color: #e0e0e0; /* Gray background for AI messages */
+  color: #000; /* Black text color for AI messages */
+  padding: 5px 10px;
+  margin: 5px 0;
+  border-radius: 10px;
+  align-self: flex-start; /* Left-align AI messages */
+  max-width: 60%;
+  word-wrap: break-word; /* Wrap long words if needed */
+}
+
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #1a1a1a;
 }
 
 /* Responsive design adjustments */
