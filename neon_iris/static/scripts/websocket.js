@@ -111,7 +111,7 @@ function toggleListeningState() {
 const WebSocketHandler = (() => {
   let lastActivationTime = 0;
   const activationCooldown = 3000; // 3 seconds cooldown
-  const ws = new WebSocket(`ws://localhost:8000/ws`);
+  const ws = new WebSocket(WS_URL);
   const audio = new Audio("/static/wake.mp3"); // Wakeword acknowledgment sound
 
   ws.onopen = () => {
@@ -124,7 +124,7 @@ const WebSocketHandler = (() => {
     const currentTime = Date.now();
     if ("activations" in model_payload) {
       if (
-        model_payload.activations.includes("alexa") &&
+        model_payload.activations.includes("hey_neon") &&
         currentTime - lastActivationTime > activationCooldown
       ) {
         shouldListen = true;

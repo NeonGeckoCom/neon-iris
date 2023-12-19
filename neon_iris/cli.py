@@ -138,6 +138,19 @@ def start_gradio():
         click.echo("Unable to connect to MQ server")
 
 
+@neon_iris_cli.command(help="Create a Web Voice Satellite session")
+@click.option("--port", "-p", default=8000, help="Port to run on, defaults to 8000")
+@click.option("--host", default="0.0.0.0", help="Host to run on, defaults to 0.0.0.0")
+def start_websat(port, host):
+    from neon_iris.web_sat_client import app
+    _print_config()
+    try:
+        import uvicorn
+        uvicorn.run(app, host=host, port=port)
+    except OSError:
+        click.echo("Unable to connect to MQ server")
+
+
 @neon_iris_cli.command(help="Query Neon Core for supported languages")
 def get_languages():
     from neon_iris.util import query_neon

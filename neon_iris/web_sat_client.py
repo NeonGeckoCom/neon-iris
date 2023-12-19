@@ -50,9 +50,13 @@ class WebSatNeonClient(NeonAIClient):
         LOG.name = "iris"
         LOG.init(self.config.get("logs"))
         # OpenWW
-        self.oww_model = Model(inference_framework="tflite")
+        # TODO: Allow for arbitrary models, or pre-existing OpenWW models
+        self.oww_model = Model(
+            wakeword_models=["neon_iris/wakeword_models/hey_neon/hey_neon.tflite"],
+            inference_framework="tflite",
+        )
         # FastAPI
-        self.templates = Jinja2Templates(directory="neon_iris/static/templates")
+        self.templates = Jinja2Templates(directory="neon_iris/templates")
         self.build_routes()
 
     def get_lang(self, session_id: str):
@@ -150,12 +154,14 @@ class WebSatNeonClient(NeonAIClient):
             description = self.config.get("webui_description", "Chat With Neon")
             title = self.config.get("webui_title", "Neon AI")
             placeholder = self.config.get("webui_input_placeholder", "Ask me something")
+            ws_url = self.config.get("webui_ws_url", "ws://localhost:8000/ws")
 
             context = {
                 "request": request,
                 "title": title,
                 "description": description,
                 "placeholder": placeholder,
+                "ws_url": ws_url
             }
             return self.templates.TemplateResponse("index.html", context)
 
