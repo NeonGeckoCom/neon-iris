@@ -69,7 +69,7 @@ setuptools.setup(
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent"
     ],
-    python_requires='>=3.8',
+    python_requires='>=3.7',
     install_requires=get_requirements("requirements.txt"),
     extras_require={"gradio": get_requirements("gradio.txt"), "web_sat": get_requirements("web_sat.txt")},
     entry_points={
