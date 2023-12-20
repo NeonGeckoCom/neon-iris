@@ -1,5 +1,5 @@
 fastapi~=0.104.1
-uvicorn~=0.24.0.post1
+uvicorn[standard]~=0.24.0.post1
 aiohttp~=3.8.6
 resampy~=0.4.2
 openwakeword~=0.5.1

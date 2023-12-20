@@ -124,7 +124,7 @@ const WebSocketHandler = (() => {
     const currentTime = Date.now();
     if ("activations" in model_payload) {
       if (
-        model_payload.activations.includes("hey_neon") &&
+        model_payload.activations.includes("hey_neon_high") &&
         currentTime - lastActivationTime > activationCooldown
       ) {
         shouldListen = true;
