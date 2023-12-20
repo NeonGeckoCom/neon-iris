@@ -26,31 +26,20 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE,  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import fileinput
-from os.path import join, dirname
+from neon_mq_connector.utils.client_utils import send_mq_request
 
-with open(join(dirname(__file__), "neon_iris", "version.py"),
-          "r", encoding="utf-8") as v:
-    for line in v.readlines():
-        if line.startswith("__version__"):
-            if '"' in line:
-                version = line.split('"')[1]
-            else:
-                version = line.split("'")[1]
 
-if "a" not in version:
-    parts = version.split('.')
-    parts[-1] = str(int(parts[-1]) + 1)
-    version = '.'.join(parts)
-    version = f"{version}a0"
-else:
-    post = version.split("a")[1]
-    new_post = int(post) + 1
-    version = version.replace(f"a{post}", f"a{new_post}")
+class LLMConversation:
+    def __init__(self, llm: str = "chat_gpt"):
+        self.history = list()
+        self.queue = f"{llm}_input"
 
-for line in fileinput.input(join(dirname(__file__), "neon_iris",
-                                 "version.py"), inplace=True):
-    if line.startswith("__version__"):
-        print(f"__version__ = \"{version}\"")
-    else:
-        print(line.rstrip('\n'))
+    def get_response(self, query: str):
+        resp = send_mq_request("/llm", {'query': query,
+                                        'history': self.history}, self.queue,
+                               timeout=90)
+        reply = resp.get("response") or ""
+        if reply:
+            self.history.append(("user", query))
+            self.history.append(("llm", reply))
+        return reply

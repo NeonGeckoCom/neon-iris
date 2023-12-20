@@ -33,7 +33,7 @@ import unittest
 from neon_utils.mq_utils import NeonMQHandler
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-from neon_iris.client import NeonAIClient, CLIClient
+from neon_iris.client import NeonAIClient
 
 _test_config = {
     "MQ": {
@@ -53,6 +53,8 @@ class TestClient(unittest.TestCase):
     def test_client_create(self):
         client = NeonAIClient(_test_config)
         self.assertIsInstance(client.uid, str)
+        self.assertEqual(client._config, _test_config)
+        self.assertEqual(client._connection.config, _test_config["MQ"])
         self.assertTrue(os.path.isdir(client.audio_cache_dir))
         self.assertIsInstance(client.client_name, str)
         self.assertIsInstance(client.connection, NeonMQHandler)

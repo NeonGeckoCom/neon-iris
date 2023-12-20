@@ -31,18 +31,21 @@ import setuptools
 from os import path
 
 
+BASE_PATH = path.abspath(path.dirname(__file__))
+
+
 def get_requirements(requirements_filename: str):
-    requirements_file = path.join(path.abspath(path.dirname(__file__)), "requirements", requirements_filename)
+    requirements_file = path.join(BASE_PATH, "requirements", requirements_filename)
     with open(requirements_file, 'r', encoding='utf-8') as r:
         requirements = r.readlines()
     requirements = [r.strip() for r in requirements if r.strip() and not r.strip().startswith("#")]
     return requirements
 
 
-with open("README.md", "r") as f:
+with open(path.join(BASE_PATH, "README.md"), "r") as f:
     long_description = f.read()
 
-with open("neon_iris/version.py", "r", encoding="utf-8") as v:
+with open(path.join(BASE_PATH, "neon_iris", "version.py"), "r", encoding="utf-8") as v:
     for line in v.readlines():
         if line.startswith("__version__"):
             if '"' in line:
@@ -68,6 +71,7 @@ setuptools.setup(
     ],
     python_requires='>=3.6',
     install_requires=get_requirements("requirements.txt"),
+    extras_require={"gradio": get_requirements("gradio.txt")},
     entry_points={
         'console_scripts': ['iris=neon_iris.cli:neon_iris_cli']
     }

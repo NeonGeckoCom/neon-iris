@@ -1,0 +1,46 @@
+MQ:
+  server: neon-rabbitmq
+  port: 5672
+  users:
+    mq_handler:
+      user: neon_api_utils
+      password: Klatchat2021
+iris:
+  webui_title: Neon AI
+  webui_description: Chat with Neon
+  webui_input_placeholder: Ask me something
+  webui_chatbot_label: Chat History
+  webui_mic_label: Speak to Neon
+  webui_text_label: Text with Neon
+  server_address: "0.0.0.0"
+  server_port: 7860
+  default_lang: en-us
+  enable_lang_api: True
+
+location:
+  city:
+    code: Renton
+    name: Renton
+    state:
+      code: WA
+      name: Washington
+      country:
+        code: US
+        name: United States
+  coordinate:
+    latitude: 47.482880
+    longitude: -122.217064
+  timezone:
+    code: America/Los_Angeles
+    name: Pacific Standard Time
+    dstOffset: 3600000
+    offset: -28800000
+
+logs:
+  name: iris
+  level: INFO
+  level_overrides:
+    error:
+      - pika
+    warning:
+      - filelock

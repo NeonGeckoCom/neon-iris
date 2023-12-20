@@ -1,0 +1,67 @@
+# Changelog
+
+## [0.0.5a21](https://github.com/NeonGeckoCom/neon-iris/tree/0.0.5a21) (2023-12-13)
+
+[Full Changelog](https://github.com/NeonGeckoCom/neon-iris/compare/0.0.5a20...0.0.5a21)
+
+**Merged pull requests:**
+
+- Update Documentation and Logging [\#48](https://github.com/NeonGeckoCom/neon-iris/pull/48) ([NeonDaniel](https://github.com/NeonDaniel))
+
+## [0.0.5a20](https://github.com/NeonGeckoCom/neon-iris/tree/0.0.5a20) (2023-12-13)
+
+[Full Changelog](https://github.com/NeonGeckoCom/neon-iris/compare/0.0.5a19...0.0.5a20)
+
+**Merged pull requests:**
+
+- Improved config handling [\#46](https://github.com/NeonGeckoCom/neon-iris/pull/46) ([NeonDaniel](https://github.com/NeonDaniel))
+
+## [0.0.5a19](https://github.com/NeonGeckoCom/neon-iris/tree/0.0.5a19) (2023-12-11)
+
+[Full Changelog](https://github.com/NeonGeckoCom/neon-iris/compare/0.0.5a18...0.0.5a19)
+
+**Merged pull requests:**
+
+- Update release automation [\#47](https://github.com/NeonGeckoCom/neon-iris/pull/47) ([NeonDaniel](https://github.com/NeonDaniel))
+
+## [0.0.5a18](https://github.com/NeonGeckoCom/neon-iris/tree/0.0.5a18) (2023-12-11)
+
+[Full Changelog](https://github.com/NeonGeckoCom/neon-iris/compare/0.0.4...0.0.5a18)
+
+**Implemented enhancements:**
+
+- \[FEAT\] Gradio User Settings Intents [\#35](https://github.com/NeonGeckoCom/neon-iris/issues/35)
+- \[FEAT\] After submitting recorded input audio the UI element should reset [\#30](https://github.com/NeonGeckoCom/neon-iris/issues/30)
+- \[FEAT\] Speech input should print STT results to the chat UI in addition to response [\#29](https://github.com/NeonGeckoCom/neon-iris/issues/29)
+
+**Fixed bugs:**
+
+- \[BUG\] Input audio resampling is not efficiently implemented [\#28](https://github.com/NeonGeckoCom/neon-iris/issues/28)
+- \[BUG\] Implement per-user settings in web UI [\#27](https://github.com/NeonGeckoCom/neon-iris/issues/27)
+
+**Merged pull requests:**
+
+- Add GitHub pre-release automation [\#45](https://github.com/NeonGeckoCom/neon-iris/pull/45) ([NeonDaniel](https://github.com/NeonDaniel))
+- Update neon-mq-connector dependency to stable spec [\#43](https://github.com/NeonGeckoCom/neon-iris/pull/43) ([NeonDaniel](https://github.com/NeonDaniel))
+- Minor fixes to audio input handling [\#42](https://github.com/NeonGeckoCom/neon-iris/pull/42) ([NeonDaniel](https://github.com/NeonDaniel))
+- Refactor audio responses to utilize Chatbot UI [\#40](https://github.com/NeonGeckoCom/neon-iris/pull/40) ([NeonDaniel](https://github.com/NeonDaniel))
+- Get Language Support from Core [\#37](https://github.com/NeonGeckoCom/neon-iris/pull/37) ([NeonDaniel](https://github.com/NeonDaniel))
+- Handle profile updates [\#36](https://github.com/NeonGeckoCom/neon-iris/pull/36) ([NeonDaniel](https://github.com/NeonDaniel))
+- Handle STT Transcripts in Chat UI [\#34](https://github.com/NeonGeckoCom/neon-iris/pull/34) ([NeonDaniel](https://github.com/NeonDaniel))
+- Remove audio resampling and add timing context support [\#33](https://github.com/NeonGeckoCom/neon-iris/pull/33) ([NeonDaniel](https://github.com/NeonDaniel))
+- Fix web\_client language handling to respect configured input language [\#32](https://github.com/NeonGeckoCom/neon-iris/pull/32) ([NeonDaniel](https://github.com/NeonDaniel))
+- Threaded input handling and multi-session support [\#31](https://github.com/NeonGeckoCom/neon-iris/pull/31) ([NeonDaniel](https://github.com/NeonDaniel))
+- Add Gradio web UI with Docker Container [\#24](https://github.com/NeonGeckoCom/neon-iris/pull/24) ([NeonDaniel](https://github.com/NeonDaniel))
+- Add NeonVoiceClient class for minimal remote audio client [\#23](https://github.com/NeonGeckoCom/neon-iris/pull/23) ([NeonDaniel](https://github.com/NeonDaniel))
+- Resolve client compat. bug [\#22](https://github.com/NeonGeckoCom/neon-iris/pull/22) ([NeonDaniel](https://github.com/NeonDaniel))
+- Add CLI endpoints to interact with API and LLM endpoints [\#21](https://github.com/NeonGeckoCom/neon-iris/pull/21) ([NeonDaniel](https://github.com/NeonDaniel))
+- Specify `setup.py` path explicitly [\#20](https://github.com/NeonGeckoCom/neon-iris/pull/20) ([NeonDaniel](https://github.com/NeonDaniel))
+- Update build automation to default branch [\#19](https://github.com/NeonGeckoCom/neon-iris/pull/19) ([NeonDaniel](https://github.com/NeonDaniel))
+- Update to use shared version\_bump.py script [\#18](https://github.com/NeonGeckoCom/neon-iris/pull/18) ([NeonDaniel](https://github.com/NeonDaniel))
+- Remove invalid release Docker action [\#17](https://github.com/NeonGeckoCom/neon-iris/pull/17) ([NeonDaniel](https://github.com/NeonDaniel))
+- Update automation to shared repository [\#15](https://github.com/NeonGeckoCom/neon-iris/pull/15) ([NeonDaniel](https://github.com/NeonDaniel))
+- Add methods with CLI entrypoints to get STT/TTS [\#12](https://github.com/NeonGeckoCom/neon-iris/pull/12) ([NeonDaniel](https://github.com/NeonDaniel))
+
+
+
+\* *This Changelog was automatically generated by [github_changelog_generator](https://github.com/github-changelog-generator/github-changelog-generator)*

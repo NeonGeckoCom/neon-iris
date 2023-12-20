@@ -37,9 +37,11 @@ from threading import Event, Thread
 from time import time
 from typing import Optional
 from uuid import uuid4
-from mycroft_bus_client import Message
+from ovos_bus_client.message import Message
+from ovos_utils.json_helper import merge_dict
 from pika.exceptions import StreamLostError
 from neon_utils.configuration_utils import get_neon_user_config
+from neon_utils.metrics_utils import Stopwatch
 from neon_utils.mq_utils import NeonMQHandler
 from neon_utils.socket_utils import b64_to_dict
 from neon_utils.file_utils import decode_base64_string_to_file, \
@@ -47,6 +49,8 @@ from neon_utils.file_utils import decode_base64_string_to_file, \
 from neon_utils.logger import LOG
 from ovos_utils.xdg_utils import xdg_config_home, xdg_cache_home
 from ovos_config.config import Configuration
+
+_stopwatch = Stopwatch()
 
 
 class NeonAIClient:
@@ -57,7 +61,8 @@ class NeonAIClient:
         self.client_name = "unknown"
         self._config = mq_config or dict(Configuration()).get("MQ")
         self._connection = self._init_mq_connection()
-
+        self._languages = dict()
+        self._language_init = Event()
         config_dir = config_dir or join(xdg_config_home(), "neon", "neon_iris")
 
         self._user_config = get_neon_user_config(config_dir)
@@ -67,12 +72,32 @@ class NeonAIClient:
         self.audio_cache_dir = join(xdg_cache_home(), "neon", "neon_iris")
         makedirs(self.audio_cache_dir, exist_ok=True)
 
+        config = Configuration().get("iris", {})
+
+        # Collect supported languages
+        if config.get("enable_lang_api"):
+            message = self._build_message("neon.languages.get", {})
+            self._send_message(message)
+
+            if self._language_init.wait(30):
+                LOG.debug(f"Got language support: {self._languages}")
+
+        if not self._languages:
+            lang_config = config.get('languages') or []
+            self._languages['stt'] = lang_config
+            self._languages['tts'] = lang_config
+            LOG.debug(f"Using supported langs configuration: {self._languages}")
+
     @property
     def uid(self) -> str:
         """
         UID for this client object
         """
         return self._uid
+
+    @property
+    def default_username(self) -> str:
+        return self._user_config["user"]["username"]
 
     @property
     def user_config(self) -> dict:
@@ -123,10 +148,24 @@ class NeonAIClient:
         Override this method to handle Neon Responses
         """
         channel.basic_ack(delivery_tag=method.delivery_tag)
-        response = b64_to_dict(body)
+        recv_time = time()
+        with _stopwatch:
+            response = b64_to_dict(body)
+        LOG.debug(f"Message deserialized in {_stopwatch.time}s")
         message = Message(response.get('msg_type'), response.get('data'),
                           response.get('context'))
-        LOG.info(message.msg_type)
+
+        # Get timing data and log
+        message.context.setdefault("timing", {})
+        resp_time = message.context['timing'].get('response_sent', recv_time)
+        if recv_time != resp_time:
+            transit_time = recv_time - resp_time
+            message.context['timing']['client_from_core'] = transit_time
+            LOG.debug(f"Response MQ transit time={transit_time}")
+        handling_time = recv_time - message.context['timing'].get('client_sent',
+                                                                  recv_time)
+        LOG.info(f"{message.msg_type} handled in {handling_time}")
+        LOG.debug(f"{pformat(message.context['timing'])}")
         if message.msg_type == "klat.response":
             LOG.info("Handling klat response event")
             self.handle_klat_response(message)
@@ -136,6 +175,10 @@ class NeonAIClient:
             self._handle_profile_update(message)
         elif message.msg_type == "neon.clear_data":
             self._handle_clear_data(message)
+        elif message.msg_type == "klat.error":
+            self.handle_error_response(message)
+        elif message.msg_type == "neon.languages.get.response":
+            self._handle_supported_languages(message)
         elif message.msg_type.endswith(".response"):
             self.handle_api_response(message)
         else:
@@ -220,60 +263,93 @@ class NeonAIClient:
         # (CACHES, PROFILE, ALL_TR, CONF_LIKES, CONF_DISLIKES, ALL_DATA,
         # ALL_MEDIA, ALL_UNITS, ALL_LANGUAGE
 
+    def _handle_supported_languages(self, message: Message):
+        self._languages = message.data
+        if not all((x in self._languages for x in ("stt", "tts"))):
+            LOG.warning(f"Language support incomplete response: {self._languages}")
+        self._languages['stt'].sort()
+        self._languages['tts'].sort()
+        self._language_init.set()
+
     def send_utterance(self, utterance: str, lang: str = "en-us",
                        username: Optional[str] = None,
-                       user_profiles: Optional[list] = None):
+                       user_profiles: Optional[list] = None,
+                       context: Optional[dict] = None):
         """
         Optionally override this to queue text inputs or do any pre-parsing
         :param utterance: utterance to submit to skills module
         :param lang: language code associated with request
         :param username: username associated with request
         :param user_profiles: user profiles expecting a response
+        :param context: Optional dict context to add to emitted message
         """
-        self._send_utterance(utterance, lang, username, user_profiles)
+        self._send_utterance(utterance, lang, username, user_profiles, context)
 
     def send_audio(self, audio_file: str, lang: str = "en-us",
                    username: Optional[str] = None,
-                   user_profiles: Optional[list] = None):
+                   user_profiles: Optional[list] = None,
+                   context: Optional[dict] = None):
         """
         Optionally override this to queue audio inputs or do any pre-parsing
         :param audio_file: path to audio file to send to speech module
         :param lang: language code associated with request
         :param username: username associated with request
         :param user_profiles: user profiles expecting a response
+        :param context: Optional dict context to add to emitted message
         """
-        self._send_audio(audio_file, lang, username, user_profiles)
+        self._send_audio(audio_file, lang, username, user_profiles, context)
 
     def _build_message(self, msg_type: str, data: dict,
                        username: Optional[str] = None,
                        user_profiles: Optional[list] = None,
                        ident: str = None) -> Message:
+        user_profiles = user_profiles or [self.user_config]
+        username = username or user_profiles[0]['user']['username']
         return Message(msg_type, data,
                        {"client_name": self.client_name,
                         "client": self._client,
                         "ident": ident or str(time()),
                         "username": username,
-                        "user_profiles": user_profiles or list(),
-                        "klat_data": {"routing_key": self.uid}
+                        "user_profiles": user_profiles,
+                        "neon_should_respond": True,
+                        "timing": {},
+                        "mq": {"routing_key": self.uid,
+                               "message_id": self.connection.create_unique_id()}
                         })
 
     def _send_utterance(self, utterance: str, lang: str,
-                        username: str, user_profiles: list):
+                        username: str, user_profiles: list,
+                        context: Optional[dict] = None):
+        context = context or dict()
+        username = username or self.default_username
+        user_profiles = user_profiles or [self.user_config]
         message = self._build_message("recognizer_loop:utterance",
                                       {"utterances": [utterance],
                                        "lang": lang}, username, user_profiles)
         serialized = {"msg_type": message.msg_type,
                       "data": message.data,
-                      "context": message.context}
+                      "context": merge_dict(message.context, context,
+                                            new_only=True)}
         self._send_serialized_message(serialized)
 
     def _send_audio(self, audio_file: str, lang: str,
-                    username: str, user_profiles: list):
+                    username: str, user_profiles: list,
+                    context: Optional[dict] = None):
+        context = context or dict()
         audio_data = encode_file_to_base64_string(audio_file)
         message = self._build_message("neon.audio_input",
                                       {"lang": lang,
-                                       "audio_data": audio_data},
+                                       "audio_data": audio_data,
+                                       "utterances": []},
+                                      # TODO: `utterances` patching mq connector
                                       username, user_profiles)
+        serialized = {"msg_type": message.msg_type,
+                      "data": message.data,
+                      "context": merge_dict(message.context, context,
+                                            new_only=True)}
+        self._send_serialized_message(serialized)
+
+    def _send_message(self, message: Message):
         serialized = {"msg_type": message.msg_type,
                       "data": message.data,
                       "context": message.context}
@@ -281,16 +357,23 @@ class NeonAIClient:
 
     def _send_serialized_message(self, serialized: dict):
         try:
+            serialized['context']['timing']['client_sent'] = time()
+            if serialized['context']['timing'].get('gradio_sent'):
+                serialized['context']['timing']['iris_input_handling'] = \
+                    serialized['context']['timing']['client_sent'] - \
+                    serialized['context']['timing']['gradio_sent']
             self.connection.emit_mq_message(
                 self._connection.connection,
                 queue="neon_chat_api_request",
                 request_data=serialized)
+            LOG.debug(f"emitted {serialized.get('msg_type')}")
         except Exception as e:
             LOG.exception(e)
             self.shutdown()
 
     def _init_mq_connection(self):
-        mq_connection = NeonMQHandler(self._config, "mq_handler", self._vhost)
+        mq_config = self._config.get("MQ") or self._config
+        mq_connection = NeonMQHandler(mq_config, "mq_handler", self._vhost)
         mq_connection.register_consumer("neon_response_handler", self._vhost,
                                         self.uid, self.handle_neon_response,
                                         auto_ack=False)
