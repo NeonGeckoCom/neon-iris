@@ -7,15 +7,17 @@ const AudioHandler = (() => {
   let sampleRate;
   let isRecording = false;
 
-   // Ensure the getUserMedia is correctly referenced
-   const getUserMedia = navigator.getUserMedia ||
-   navigator.webkitGetUserMedia ||
-   navigator.mozGetUserMedia ||
-   navigator.msGetUserMedia;
+  // Ensure the getUserMedia is correctly referenced
+  const getUserMedia =
+    navigator.getUserMedia ||
+    navigator.webkitGetUserMedia ||
+    navigator.mozGetUserMedia ||
+    navigator.msGetUserMedia;
 
   const startAudio = () => {
     if (getUserMedia) {
-      getUserMedia.call(navigator,
+      getUserMedia.call(
+        navigator,
         { audio: true },
         (stream) => {
           audioStream = stream;
@@ -57,12 +59,12 @@ const AudioHandler = (() => {
       if (recorder) {
         recorder.disconnect();
         volume.disconnect();
-        // Disconnecting the audio context might not be necessary; depends on your use case.
+        // Disconnecting the audio context might not be necessary
         // audioContext.close();
       }
       if (audioStream) {
         const tracks = audioStream.getTracks();
-        tracks.forEach(track => track.stop());
+        tracks.forEach((track) => track.stop());
       }
     }
   };
@@ -82,7 +84,7 @@ const AudioHandler = (() => {
     let l = buffer.length;
     let buf = new Int16Array(l);
     while (l--) {
-      buf[l] = Math.min(1, buffer[l]) * 0x7FFF;
+      buf[l] = Math.min(1, buffer[l]) * 0x7fff;
     }
     return buf.buffer;
   };
@@ -93,16 +95,16 @@ const AudioHandler = (() => {
   };
 })();
 
-const startButton = document.getElementById('startButton');
-startButton.addEventListener('click', function() {
-  AudioHandler.toggle(); // Call the toggle method
+const startButton = document.getElementById("startButton");
+startButton.addEventListener("click", function () {
+  AudioHandler.toggle();
 
   // Update the button's text and class based on the recording state
   if (AudioHandler.isRecording()) {
-    startButton.classList.add('listening');
-    startButton.textContent = 'Listening...';
+    startButton.classList.add("listening");
+    startButton.textContent = "Listening...";
   } else {
-    startButton.classList.remove('listening');
-    startButton.textContent = 'Start Listening';
+    startButton.classList.remove("listening");
+    startButton.textContent = "Start Listening";
   }
 });

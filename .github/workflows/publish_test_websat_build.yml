@@ -1,8 +1,9 @@
 name: Publish Docker Containers
 on:
-  registry:
-    type: string
-    default: ghcr.io
+  push:
+    branches:
+      - dev
+      - main
 
 env:
   REGISTRY: ghcr.io
@@ -12,7 +13,7 @@ jobs:
   build_and_publish_docker:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.version.version }}
+      version: "${{ steps.version.version }}"
     permissions:
       contents: read
       packages: write
@@ -33,7 +34,7 @@ jobs:
         id: version
         run: |
           VERSION=$(sed "s/a/-a./" <<< $(python setup.py --version))
-          echo ::set-output name=version::${VERSION}
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
         env:
           image_name: ${{ env.IMAGE_NAME }}
 

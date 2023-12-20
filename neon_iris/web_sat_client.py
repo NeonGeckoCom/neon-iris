@@ -52,7 +52,7 @@ class WebSatNeonClient(NeonAIClient):
         # OpenWW
         # TODO: Allow for arbitrary models, or pre-existing OpenWW models
         self.oww_model = Model(
-            wakeword_models=["neon_iris/wakeword_models/hey_neon/hey_neon.tflite"],
+            wakeword_models=["neon_iris/wakeword_models/hey_neon/hey_neon_high.tflite"],
             inference_framework="tflite",
         )
         # FastAPI
@@ -83,26 +83,17 @@ class WebSatNeonClient(NeonAIClient):
         """
         LOG.debug(f"gradio context={message.context['gradio']}")
         resp_data = message.data["responses"]
-        files = []
         sentences = []
         session = message.context["gradio"]["session"]
         for _, response in resp_data.items():  # lang, response
             sentences.append(response.get("sentence"))
             if response.get("audio"):
                 for _, data in response["audio"].items():
-                    # filepath = "/".join(
-                    #     [self.audio_cache_dir] + response[gender].split("/")[-4:]
-                    # )
-                    # TODO: This only plays the most recent, so it doesn't
-                    #  support multiple languages or multi-utterance responses
                     self._current_tts[session] = data
-                    # files.append(filepath)
-                    # if not isfile(filepath):
-                    # decode_base64_string_to_file(data, filepath)
         self._response = "\n".join(sentences)
         self._await_response.set()
 
-    def send_audio(
+    def send_audio( # pylint: disable=arguments-renamed
         self,
         audio_b64_string: str,
         lang: str = "en-us",
