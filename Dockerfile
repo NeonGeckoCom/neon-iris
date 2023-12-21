@@ -5,7 +5,8 @@ FROM jrottenberg/ffmpeg:4.1 as ffmpeg-base
 FROM python:3.8-slim
 
 # Label for vendor
-LABEL vendor=neon.ai
+LABEL vendor=neon.ai \
+    ai.neon.name="neon-iris"
 
 # Build argument for specifying extras
 ARG EXTRAS
