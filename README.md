@@ -68,6 +68,43 @@ instance connected via MQ.
 This starts a local webserver and serves a web UI for interacting with a Neon
 instance connected to MQ.
 
+## Docker
+
+### Building
+
+To build the Docker image, run:
+
+```bash
+docker build -t ghcr.io/neongeckocom/neon-iris:latest .
+```
+
+To build the Docker image with gradio extras, run:
+
+```bash
+docker build --build-arg EXTRAS=gradio -t ghcr.io/neongeckocom/neon-iris:latest .
+```
+
+To build the Docker image with websat extras, run:
+
+```bash
+docker build --build-arg EXTRAS=websat -t ghcr.io/neongeckocom/neon-iris:latest .
+```
+
+### Running
+
+The Docker image that is built for this service runs the `iris` CLI with the
+`-h` argument by default. In order to use the container to run different services,
+you must override the entrypoint. For example, to run the `start-websat` service,
+you would run:
+
+```bash
+docker run --rm -p 8000:8000 ghcr.io/neongeckocom/neon-iris:latest start-websat
+```
+
+Running the container without any arguments gives you a list of commands that
+can be run. You can choose to run any of these commands by replacing `start-websat`
+in the above command with the command you want to run.
+
 ## websat
 
 ### Configuration

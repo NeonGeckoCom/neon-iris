@@ -118,7 +118,7 @@ class GradIOClient(NeonAIClient):
     def on_user_input(self, utterance: str,
                       chat_history: List[Tuple[str, str]],
                       audio_input: str,
-                      client_session: str):
+                      client_session: str):# -> tuple[List[Tuple[str, str]], str, Literal[''], None, Any]:
         """
         Callback to handle textual user input
         @param utterance: String utterance submitted by the user

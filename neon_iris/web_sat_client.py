@@ -1,10 +1,36 @@
 """Runs a web server that serves the Neon AI Web UI and Voice Satellite."""
+# NEON AI (TM) SOFTWARE, Software Development Kit & Application Development System
+# All trademark and other rights reserved by their respective owners
+# Copyright 2008-2024 Neongecko.com Inc.
+# BSD-3
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 1. Redistributions of source code must retain the above copyright notice,
+#    this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from this
+#    software without specific prior written permission.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+# CONTRIBUTORS  BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+# OR PROFITS;  OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+# LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE,  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import json
 from os import makedirs
 from os.path import isdir, join
 from threading import Event
 from time import time
-from typing import Dict, List, Optional
+from typing import Dict, Optional, Sequence
 from uuid import uuid4
 
 import numpy as np
@@ -26,7 +52,7 @@ from neon_iris.models.web_sat import UserInput, UserInputResponse
 class WebSatNeonClient(NeonAIClient):
     """Neon AI Web UI and Voice Satellite client."""
 
-    def __init__(self, lang: str = None):
+    def __init__(self, lang: str = ""):
         config = Configuration()
         self.config = config.get("iris") or dict()
         self.mq_config = config.get("MQ")
@@ -46,7 +72,7 @@ class WebSatNeonClient(NeonAIClient):
         )  # TODO: Clear periodically, or have persistent storage
         if not isdir(self._audio_path):
             makedirs(self._audio_path)
-        self.default_lang = lang or self.config.get("default_lang")
+        self.default_lang = lang or self.config.get("default_lang", "")
         LOG.name = "iris"
         LOG.init(self.config.get("logs"))
         # OpenWW
@@ -122,12 +148,17 @@ class WebSatNeonClient(NeonAIClient):
         )
 
     @property
-    def supported_languages(self) -> List[str]:
+    def supported_languages(self) -> Sequence[str]:
         """
         Get a list of supported languages from configuration
         @returns: list of BCP-47 language codes
         """
-        return self.config.get("languages") or [self.default_lang]
+        languages = self.config.get("languages")
+        if languages is None:
+            return [self.default_lang]
+        if not isinstance(languages, list):
+            raise TypeError("Expected a list of languages in the configuration")
+        return languages
 
     def _start_session(self):
         sid = uuid4().hex
@@ -164,6 +195,7 @@ class WebSatNeonClient(NeonAIClient):
             await websocket.send_text(
                 json.dumps({"loaded_models": list(self.oww_model.models.keys())})
             )
+            sample_rate = None
 
             while True:
                 message = await websocket.receive()
@@ -185,7 +217,7 @@ class WebSatNeonClient(NeonAIClient):
 
                         # Convert audio to correct format and sample rate
                         audio_data = np.frombuffer(audio_bytes, dtype=np.int16)
-                        if sample_rate != 16000:
+                        if sample_rate and sample_rate != 16000:
                             audio_data = resampy.resample(
                                 audio_data, sample_rate, 16000
                             )
@@ -234,7 +266,7 @@ class WebSatNeonClient(NeonAIClient):
                 LOG.info(f"Sending utterance: {utterance} with lang: {lang}")
                 self.send_utterance(
                     utterance,
-                    lang,
+                    lang or "en-us",
                     username=session_id,
                     user_profiles=[self._profiles[session_id]],
                     context={
@@ -243,10 +275,10 @@ class WebSatNeonClient(NeonAIClient):
                     },
                 )
             else:
-                LOG.info(f"Sending audio: {audio_input} with lang: {lang}")
+                LOG.info(f"Sending audio with length of {len(audio_input)} with lang: {lang}")
                 self.send_audio(
                     audio_input,
-                    lang,
+                    lang or "en-us",
                     username=session_id,
                     user_profiles=[self._profiles[session_id]],
                     context={
