@@ -2,6 +2,7 @@
 
 name: Publish Alpha Build
 on:
+  workflow_dispatch:
   push:
     branches:
       - dev
@@ -15,8 +16,13 @@ jobs:
     with:
       version_file: "neon_iris/version.py"
       setup_py: "setup.py"
-      publish_prerelease: true
+      publish_prerelease: false
+      publish_pypi: false
   build_and_publish_docker:
     needs: publish_alpha_release
-    uses: neongeckocom/.github/.github/workflows/publish_docker.yml@master
+    uses: neongeckocom/.github/.github/workflows/publish_docker.yml@FEAT_BetterDockerSupport
     secrets: inherit
+    with:
+      build_args: "['EXTRAS=gradio']"
+      extra_tag: "websat"
+      extra_build_args: "['EXTRAS=websat']"

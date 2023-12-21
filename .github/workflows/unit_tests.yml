@@ -8,6 +8,8 @@ on:
 jobs:
   py_build_tests:
     uses: neongeckocom/.github/.github/workflows/python_build_tests.yml@master
+  docker_build_tests:
+    uses: neongeckocom/.github/.github/workflows/docker_build_tests.yml@FEAT_BetterDockerSupport
   unit_tests:
     strategy:
       matrix:
