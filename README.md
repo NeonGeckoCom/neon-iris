@@ -126,7 +126,7 @@ iris:
   webui_title: Neon AI
   webui_description: Chat with Neon
   webui_input_placeholder: Ask me something
-  webui_ws_url: wss://neonaialpha.com:8000/ws
+  webui_ws_url: wss://neonaialpha.com/ws
 ```
 
 ### Customization

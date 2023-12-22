@@ -40,7 +40,7 @@ COPY docker_overlay/ /
 # Expose port 8000 for websat
 EXPOSE 8000
 
-ENTRYPOINT ["iris"]
+# Set the ARG value as an environment variable
+ENV EXTRAS=${EXTRAS}
 
-# Default command
-CMD ["-h"]
+ENTRYPOINT ["/neon_iris/entrypoint.sh"]
