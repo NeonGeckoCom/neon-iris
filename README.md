@@ -119,7 +119,12 @@ accepts special configuration items prefixed with `webui_` to customize the UI.
 | webui_input_placeholder | The placeholder text for the input box                                                                                                 | Ask me something       |
 | webui_ws_url            | The websocket URL to connect to, which must be accessible from the browser you're running in. Note that the default will usually fail. | ws://localhost:8000/ws |
 
-Example configuration:
+Iris uses the `Configuration()` class from OVOS to handle configuration. This
+means that you can specify configuration in a `neon.yaml` file in the
+`~/.config/neon`. When using a container, you can mount a volume to
+`/home/neon/.config/neon` to provide a configuration file.
+
+Example configuration block:
 
 ```yaml
 iris:

@@ -43,4 +43,11 @@ EXPOSE 8000
 # Set the ARG value as an environment variable
 ENV EXTRAS=${EXTRAS}
 
+# Create a non-root user and change ownership of necessary directories
+RUN groupadd -r neon && useradd -r -g neon neon \
+    && chown -R neon:neon /neon_iris /usr/local/bin
+
+# Use the non-root user to run the container
+USER neon
+
 ENTRYPOINT ["/neon_iris/entrypoint.sh"]
