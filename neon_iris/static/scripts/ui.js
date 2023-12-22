@@ -18,6 +18,7 @@ function submitMessage() {
 
 async function getAIResponse(text = "", recording = "") {
   try {
+    triggerWaiting(); // Trigger waiting animation
     const payload =
       text !== "" && recording === ""
         ? { utterance: text }
@@ -43,6 +44,7 @@ async function getAIResponse(text = "", recording = "") {
     // Assuming 'data' contains the AI response in a property named 'reply'
     const aiMessage = data.transcription;
 
+    triggerDone(); // Trigger done animation
     // Add in the user's transcription if STT
     if (text === "" && recording !== "") {
       const userMessage = createMessageDiv("user", data.utterance);

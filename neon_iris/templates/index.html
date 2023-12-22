@@ -6,11 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{ title }}</title>
     <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/sprite.css" />
   </head>
   <body>
     <div class="chat-container">
       <div class="chat-header">
-        {{ description }} <img src="/static/logo.webp" />
+        {{ description }} <img src="/static/logo.webp" class="logo" />
       </div>
       <button id="startButton">Start Recording</button>
       <div class="chat-window" id="chatWindow">
@@ -22,6 +23,7 @@
       <div class="input-area">
         <input type="text" id="chatInput" placeholder="{{ placeholder }}" />
         <button onclick="submitMessage()">Submit</button>
+        <div class="sprite" />
       </div>
     </div>
   </body>
@@ -36,4 +38,5 @@
   <script src="/static/scripts/websocket.js"></script>
   <script src="/static/scripts/audio.js"></script>
   <script src="/static/scripts/ui.js"></script>
+  <script src="/static/scripts/sprite.js"></script>
 </html>

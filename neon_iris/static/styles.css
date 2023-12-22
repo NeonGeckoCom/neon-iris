@@ -7,11 +7,15 @@ html {
   margin: 0;
   padding: 0;
 }
+img.logo {
+  width: 40px;
+  height: 40px;
+}
 a {
   text-decoration: none;
 }
 a:link {
-  color: #000;
+  color: #fff;
   border-bottom: 1px solid #ff0000;
 }
 a:visited {
@@ -19,7 +23,7 @@ a:visited {
   border-bottom: 1px solid #b3b3b3;
 }
 a:hover {
-  color: #2d8653;
+  color: black;
   border-bottom: 1px solid #000099;
 }
 .button-container {
@@ -116,6 +120,18 @@ a:hover {
   text-align: center;
   font-size: 1.5em;
 }
+.download-button {
+  display: inline-block;
+  padding: 10px 20px;
+  margin: 10px 0;
+  background-color: #03a9f4;
+  color: #ffffff;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 5px;
+  transition: background-color 0.3s;
+}
+
 /* Style for user messages */
 .user-message {
   background-color: #007bff; /* Blue background for user messages */

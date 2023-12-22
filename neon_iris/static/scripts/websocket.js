@@ -77,12 +77,14 @@ async function handleSpeechEnd(audio) {
   // Save the spoken audio as a downloadable file
   const downloadArea = document.getElementById("download-area");
   if (downloadArea) {
-    downloadArea.innerHTML = "";
-    const downloadLink = document.createElement("a");
-    downloadLink.href = audioUrl;
-    downloadLink.download = "recorded_audio.wav";
-    downloadLink.textContent = "Download Recorded Audio";
-    downloadArea.appendChild(downloadLink);
+    const downloadButton = document.createElement("a");
+    downloadButton.href = audioUrl;
+    downloadButton.download = "recorded_audio.wav";
+    downloadButton.textContent = "Download Recorded Audio";
+    downloadButton.className = "download-button"; // Add a class for styling
+    downloadButton.setAttribute("role", "button"); // Accessibility improvement
+    downloadArea.appendChild(downloadButton);
+    triggerWaiting(); // Trigger waiting animation
   } else {
     console.error("Download area not found");
   }
@@ -131,6 +133,7 @@ const WebSocketHandler = (() => {
         audio.onended = () => {
           console.log("Activation sound is done playing");
           if (myVad && !isVadRunning) {
+            triggerRecord(); // Trigger recording animation
             myVad.start();
             isVadRunning = true;
           } else if (!shouldListen && isVadRunning) {
@@ -138,6 +141,7 @@ const WebSocketHandler = (() => {
             isVadRunning = false;
           }
         };
+        triggerWake(); // Trigger wake animation
         audio.play();
         lastActivationTime = currentTime;
       }
