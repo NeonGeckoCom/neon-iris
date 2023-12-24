@@ -77,6 +77,7 @@ async function handleSpeechEnd(audio) {
   // Save the spoken audio as a downloadable file
   const downloadArea = document.getElementById("download-area");
   if (downloadArea) {
+    downloadArea.innerHTML = ""; // Clear the download area
     const downloadButton = document.createElement("a");
     downloadButton.href = audioUrl;
     downloadButton.download = "recorded_audio.wav";
