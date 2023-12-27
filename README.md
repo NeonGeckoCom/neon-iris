@@ -136,14 +136,14 @@ iris:
 
 ### Customization
 
-The websat web UI reads in the following items from `neon_iris/static`:
+The websat web UI reads in the following items from `neon_iris/static/custom`:
 
 - `error.mp3` - Used for error responses
 - `wake.mp3` - Used for wake word responses
 - `favicon.ico` - The favicon for the web UI
 - `logo.webp` - The logo for the web UI
 
-To customize these items, you can replace them in the `neon_iris/static` folder.
+To customize these items, you can replace them in the `neon_iris/static/custom` folder and rebuild the image.
 
 ### Websocket endpoint
 
