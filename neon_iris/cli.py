@@ -236,6 +236,23 @@ def get_wolfram_response(api, unit, latitude, longitude, question):
     click.echo(pformat(resp))
 
 
+@neon_iris_cli.command(help="Query Map Maker Geolocation endpoint")
+@click.option('--latitude', '--lat',
+              help="location latitude")
+@click.option('--longitude', '--lon',
+              help="location latitude")
+@click.option('--query', '-q', help="Name of location to look up")
+def get_mapmaker_response(latitude, longitude, query):
+    from neon_iris.util import query_api
+    _print_config()
+    query = {"lat": latitude,
+             "lon": longitude,
+             "address": query,
+             "service": "map_maker"}
+    resp = query_api(query)
+    click.echo(pformat(resp))
+
+
 @neon_iris_cli.command(help="Converse with an LLM")
 @click.option('--llm', default="chat_gpt",
               help="LLM Queue to interact with ('chat_gpt' or 'fastchat')")
