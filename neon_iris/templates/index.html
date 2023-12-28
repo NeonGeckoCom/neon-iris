@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="icon" href="/static/custom/favicon.ico" type="image/x-icon" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/sprite.css" />
+  </head>
+  <body>
+    <div class="chat-container">
+      <div class="chat-header">
+        {{ description }} <img src="/static/custom/logo.webp" class="logo" />
+      </div>
+      <button id="startButton">Start Recording</button>
+      <div class="chat-window" id="chatWindow">
+        <div id="chatHistory">
+          <!-- Chat messages will appear here -->
+        </div>
+      </div>
+      <div id="download-area"></div>
+      <div class="input-area">
+        <input type="text" id="chatInput" placeholder="{{ placeholder }}" />
+        <button onclick="submitMessage()">Submit</button>
+        <div class="sprite" />
+      </div>
+    </div>
+  </body>
+  <!-- Silero VAD -->
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.7/dist/bundle.min.js"></script>
+  <!-- Config -->
+  <script>
+    const WS_URL = "{{ ws_url }}";
+  </script>
+  <!-- AI Code -->
+  <script src="/static/scripts/websocket.js"></script>
+  <script src="/static/scripts/audio.js"></script>
+  <script src="/static/scripts/ui.js"></script>
+  <script src="/static/scripts/sprite.js"></script>
+</html>

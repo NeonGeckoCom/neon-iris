@@ -1,10 +1,8 @@
-# NEON AI (TM) SOFTWARE, Software Development Kit & Application Framework
+"""API data models for the WebSAT API."""
+# NEON AI (TM) SOFTWARE, Software Development Kit & Application Development System
 # All trademark and other rights reserved by their respective owners
 # Copyright 2008-2024 Neongecko.com Inc.
-# Contributors: Daniel McKnight, Guy Daniels, Elon Gasper, Richard Leeds,
-# Regina Bloomstine, Casimiro Ferreira, Andrii Pernatii, Kirill Hrymailo
-# Mike Gray, David Scripka
-# BSD-3 License
+# BSD-3
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 # 1. Redistributions of source code must retain the above copyright notice,
@@ -27,4 +25,18 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE,  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = "0.1.0"
+from typing import Optional
+from pydantic import BaseModel
+
+class UserInput(BaseModel):
+    """UserInput is the input data model for the WebSAT API."""
+    utterance: Optional[str] = ""
+    audio_input: Optional[str] = ""
+    session_id: str = "websat0000"
+
+class UserInputResponse(BaseModel):
+    """UserInputResponse is the response data model for the WebSAT API."""
+    utterance: Optional[str] = ""
+    audio_output: Optional[str] = ""
+    session_id: str = "websat0000"
+    transcription: str

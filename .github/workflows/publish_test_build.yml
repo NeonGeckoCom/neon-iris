@@ -16,7 +16,16 @@ jobs:
       version_file: "neon_iris/version.py"
       setup_py: "setup.py"
       publish_prerelease: true
-  build_and_publish_docker:
+  build_and_publish_docker_gradio:
     needs: publish_alpha_release
     uses: neongeckocom/.github/.github/workflows/publish_docker.yml@master
     secrets: inherit
+    with:
+      build_args: EXTRAS=gradio
+  build_and_publish_docker_websat:
+    needs: publish_alpha_release
+    uses: neongeckocom/.github/.github/workflows/publish_docker.yml@master
+    secrets: inherit
+    with:
+      build_args: EXTRAS=web_sat
+      image_name: ${{ github.repository }}-websat

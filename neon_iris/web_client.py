@@ -118,14 +118,14 @@ class GradIOClient(NeonAIClient):
     def on_user_input(self, utterance: str,
                       chat_history: List[Tuple[str, str]],
                       audio_input: str,
-                      client_session: str) -> (List[Tuple[str, str]], str, str, None, str):
+                      client_session: str):# -> tuple[List[Tuple[str, str]], str, Literal[''], None, Any]:
         """
         Callback to handle textual user input
         @param utterance: String utterance submitted by the user
         @returns: Input box contents, Updated chat history, Gradio session ID, audio input, audio output
         """
         input_time = time()
-        LOG.debug(f"Input received")
+        LOG.debug("Input received")
         if not self._await_response.wait(30):
             LOG.error("Previous response not completed after 30 seconds")
         in_queue = time() - input_time

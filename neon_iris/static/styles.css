@@ -1,0 +1,196 @@
+body,
+html {
+  text-align: center;
+  font-family: "Roboto", sans-serif;
+  background-color: #f4f4f4;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+img.logo {
+  width: 40px;
+  height: 40px;
+}
+a {
+  text-decoration: none;
+}
+a:link {
+  color: #fff;
+  border-bottom: 1px solid #ff0000;
+}
+a:visited {
+  color: #e600e6;
+  border-bottom: 1px solid #b3b3b3;
+}
+a:hover {
+  color: black;
+  border-bottom: 1px solid #000099;
+}
+.button-container {
+  display: flex;
+  justify-content: center; /* This centers the button in the container */
+  padding: 20px;
+  background-color: #333; /* Match the header background */
+}
+#startButton {
+  padding: 15px 30px;
+  font-size: 18px;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  outline: none;
+  margin-bottom: 10px;
+  margin-top: 10px;
+  transition: background-color 0.3s;
+  background-color: #4caf50;
+  max-width: 50%;
+  align-content: center;
+  align-self: center;
+}
+#startButton.listening {
+  background-color: #03a9f4;
+}
+.content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  background-color: #333;
+  margin: 0;
+}
+.chat-header {
+  padding: 20px;
+  background-color: #333;
+  color: #fff;
+  text-align: center;
+  font-size: 2em;
+  text-shadow: 2px 2px 4px #000000;
+  transition: transform 0.3s ease;
+}
+.chat-header:hover {
+  transform: scale(
+    1.05
+  ); /* Slight increase in size on hover for dynamic effect */
+}
+.chat-window {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  overflow: auto;
+}
+#chatHistory {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* Align items to the start by default */
+  height: 100%;
+  overflow-y: auto; /* Allows scrolling if content overflows */
+  background-color: #1a1a1a; /* Dark background for the chat container */
+}
+.input-area {
+  display: flex;
+  padding: 20px;
+}
+.input-area input {
+  flex: 1;
+  padding: 10px;
+  margin-right: 10px;
+  font-size: 16px;
+}
+.input-area button {
+  padding: 10px 20px;
+  background-color: #f90;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+}
+.input-area button:hover {
+  background-color: #e80;
+}
+.input-field {
+  flex-grow: 1;
+  padding: 10px;
+  font-size: 16px;
+  margin-right: 10px; /* Spacing between input field and submit button */
+}
+#download-area {
+  padding: 20px;
+  background-color: #333;
+  color: #fff;
+  text-align: center;
+  font-size: 1.5em;
+}
+.download-button {
+  display: inline-block;
+  padding: 10px 20px;
+  margin: 10px 0;
+  background-color: #03a9f4;
+  color: #ffffff;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 5px;
+  transition: background-color 0.3s;
+}
+
+/* Style for user messages */
+.user-message {
+  background-color: #007bff; /* Blue background for user messages */
+  color: #fff; /* White text color for user messages */
+  padding: 5px 10px;
+  margin: 5px 0;
+  border-radius: 10px;
+  align-self: flex-end; /* Right-align user messages */
+  max-width: 60%;
+  word-wrap: break-word; /* Wrap long words if needed */
+}
+
+/* Style for AI messages */
+.ai-message {
+  background-color: #e0e0e0; /* Gray background for AI messages */
+  color: #000; /* Black text color for AI messages */
+  padding: 5px 10px;
+  margin: 5px 0;
+  border-radius: 10px;
+  align-self: flex-start; /* Left-align AI messages */
+  max-width: 60%;
+  word-wrap: break-word; /* Wrap long words if needed */
+}
+
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #1a1a1a;
+}
+
+/* Responsive design adjustments */
+@media (max-width: 768px) {
+  .content {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .button-container,
+  .input-area {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .input-field,
+  .submit-button,
+  #startButton {
+    width: 100%; /* Full width on smaller screens */
+    margin: 10px 0; /* Add vertical spacing */
+  }
+
+  .chat-header {
+    font-size: 1.5em; /* Smaller text size for smaller screens */
+  }
+}
+
+/* Further responsive adjustments for even smaller screens */
+@media (max-width: 480px) {
+  .chat-header {
+    font-size: 1.2em;
+  }
+}

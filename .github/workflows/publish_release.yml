@@ -10,7 +10,16 @@ jobs:
   build_and_publish_pypi_and_release:
     uses: neongeckocom/.github/.github/workflows/publish_stable_release.yml@master
     secrets: inherit
-  build_and_publish_docker:
+  build_and_publish_docker_gradio:
     needs: build_and_publish_pypi_and_release
     uses: neongeckocom/.github/.github/workflows/publish_docker.yml@master
     secrets: inherit
+    with:
+      build_args: EXTRAS=gradio
+    build_and_publish_docker_websat:
+      needs: build_and_publish_pypi_and_release
+      uses: neongeckocom/.github/.github/workflows/publish_docker.yml@master
+      secrets: inherit
+      with:
+        build_args: EXTRAS=web_sat
+        image_name: ${{ github.repository }}-websat

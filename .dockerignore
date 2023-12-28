@@ -1,0 +1,5 @@
+.git/
+tests/
+*.egg-info
+build/
+dist/

@@ -1,0 +1,8 @@
+fastapi~=0.104.1
+uvicorn[standard]~=0.24.0.post1
+aiohttp~=3.8.6
+resampy~=0.4.2
+openwakeword~=0.5.1
+tflite~=2.10.0
+onnxruntime~=1.16.3
+jinja2~=3.1.2
