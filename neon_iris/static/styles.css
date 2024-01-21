@@ -1,6 +1,7 @@
 #startButton.listening {
-  background-color: #03a9f4;
+  background-color: var(--color-neon-green);
 }
+
 /* Style for user messages */
 .user-message {
   background-color: #007bff; /* Blue background for user messages */
@@ -30,4 +31,6 @@
   flex-direction: column;
   height: 100%;
   background-color: #1a1a1a;
+  overflow: auto;
+  max-height: calc(100vh - 20vh);
 }
