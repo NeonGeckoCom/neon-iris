@@ -102,8 +102,10 @@ startButton.addEventListener("click", function () {
   // Update the button's text and class based on the recording state
   if (AudioHandler.isRecording()) {
     startButton.classList.add("listening");
+    startButton.classList.toggle("bg-blue-500");
     startButton.textContent = "Listening...";
   } else {
+    startButton.classList.toggle("bg-blue-500");
     startButton.classList.remove("listening");
     startButton.textContent = "Start Listening";
   }
