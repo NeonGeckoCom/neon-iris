@@ -50,6 +50,7 @@ class GradIOClient(NeonAIClient):
         self.config = config.get('iris') or dict()
         NeonAIClient.__init__(self, config.get("MQ"))
         self._await_response = Event()
+        self._alerts = dict()
         self._response = None
         self._transcribed = None
         self._current_tts = dict()
@@ -79,6 +80,14 @@ class GradIOClient(NeonAIClient):
         self._profiles[sid] = self.user_config
         self._profiles[sid]['user']['username'] = sid
         return sid
+
+    def check_alerts(self, session_id: str):
+        if not self._alerts.get(session_id):
+            gradio.Info("No Alerts")
+            return session_id
+        while self._alerts.get(session_id):
+            gradio.Info(self._alerts[session_id].pop())
+        return session_id
 
     def update_profile(self, stt_lang: str, tts_lang: str, tts_lang_2: str,
                        time: int, date: str, uom: str, city: str, state: str,
@@ -215,6 +224,9 @@ class GradIOClient(NeonAIClient):
             #                      outputs=[tts_audio, client_session])
             # Define settings UI
             with gradio.Row():
+                submit = gradio.Button("Update User Settings")
+                check_alerts = gradio.Button("Check for Alerts")
+            with gradio.Row():
                 with gradio.Column():
                     lang = self.get_lang(client_session.value).split('-')[0]
                     stt_lang = gradio.Radio(label="Input Language",
@@ -253,14 +265,15 @@ class GradIOClient(NeonAIClient):
                     pref_name = gradio.Textbox(label="Preferred Name")
                     email_addr = gradio.Textbox(label="Email Address")
                     # TODO: DoB, pic, about, phone?
-            submit = gradio.Button("Update User Settings")
             submit.click(self.update_profile,
                          inputs=[stt_lang, tts_lang, tts_lang_2, time_format,
                                  date_format, unit_of_measure, city, state,
                                  country, first_name, middle_name, last_name,
                                  pref_name, email_addr, client_session],
                          outputs=[client_session])
-            blocks.launch(server_name=address, server_port=port)
+            check_alerts.click(self.check_alerts, inputs=[client_session],
+                               outputs=[client_session])
+            blocks.queue().launch(server_name=address, server_port=port)
 
     def handle_klat_response(self, message: Message):
         """
@@ -306,6 +319,17 @@ class GradIOClient(NeonAIClient):
         LOG.debug(f"Got {message.msg_type}: {message.data}")
         if message.msg_type == "neon.audio_input.response":
             self._transcribed = message.data.get("transcripts", [""])[0]
+
+    def handle_alert(self, message: Message):
+        """
+        Handle an expired alert that was previously set by this session.
+        @param message: neon.alert_expired Message
+        """
+        user = message.context['username']
+        LOG.info(f"Alert expired for user: {user}")
+        alert = f"Alert Expired: {message.data.get('alert_name')}"
+        self._alerts.setdefault(user, list())
+        self._alerts[user].append(alert)
 
     def _handle_profile_update(self, message: Message):
         updated_profile = message.data["profile"]
