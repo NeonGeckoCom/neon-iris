@@ -179,6 +179,8 @@ class NeonAIClient:
             self.handle_error_response(message)
         elif message.msg_type == "neon.languages.get.response":
             self._handle_supported_languages(message)
+        elif message.msg_type == "neon.alert_expired":
+            self.handle_alert(message)
         elif message.msg_type.endswith(".response"):
             self.handle_api_response(message)
         else:
@@ -229,6 +231,12 @@ class NeonAIClient:
     def clear_media(self, message: Message):
         """
         Override this method to handle requests to clear media (photos, etc)
+        """
+
+    @abstractmethod
+    def handle_alert(self, message: Message):
+        """
+        Override this method to handle alerts (timers, alarms, reminders)
         """
 
     def _handle_profile_update(self, message: Message):
@@ -468,6 +476,9 @@ class CLIClient(NeonAIClient):
 
     def clear_caches(self, message: Message):
         print("Cached Responses Cleared")
+
+    def handle_alert(self, message: Message):
+        print(f"\nAlert Expired: {message.data.get('alert_name')}")
 
     def clear_media(self, message: Message):
         pass
