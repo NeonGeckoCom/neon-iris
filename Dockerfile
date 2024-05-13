@@ -1,5 +1,5 @@
 # Stage 1: Use a base image to install ffmpeg
-FROM jrottenberg/ffmpeg:4.1 as ffmpeg-base
+#FROM jrottenberg/ffmpeg:4.1 as ffmpeg-base
 
 # Stage 2: Build the final image
 FROM python:3.8-slim
@@ -15,15 +15,16 @@ ENV OVOS_CONFIG_BASE_FOLDER=neon \
     OVOS_CONFIG_FILENAME=neon.yaml \
     XDG_CONFIG_HOME=/config
 
-# Copy ffmpeg binaries from the ffmpeg-base stage
-COPY --from=ffmpeg-base /usr/local/bin/ /usr/local/bin/
-COPY --from=ffmpeg-base /usr/local/lib/ /usr/local/lib/
+## Copy ffmpeg binaries from the ffmpeg-base stage
+#COPY --from=ffmpeg-base /usr/local/bin/ /usr/local/bin/
+#COPY --from=ffmpeg-base /usr/local/lib/ /usr/local/lib/
 
 RUN mkdir -p /neon_iris/requirements
 COPY ./requirements/* /neon_iris/requirements
 
 RUN pip install wheel && pip install -r /neon_iris/requirements/requirements.txt
 RUN if [ "$EXTRAS" = "gradio" ]; then \
+        apt update && apt install -y libsndfile libasound ffmpeg; \
         pip install -r /neon_iris/requirements/gradio.txt; \
     elif [ "$EXTRAS" = "web_sat" ]; then \
         pip install -r /neon_iris/requirements/web_sat.txt; \
