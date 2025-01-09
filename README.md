@@ -87,7 +87,7 @@ docker build --build-arg EXTRAS=gradio -t ghcr.io/neongeckocom/neon-iris:latest 
 To build the Docker image with websat extras, run:
 
 ```bash
-docker build --build-arg EXTRAS=websat -t ghcr.io/neongeckocom/neon-iris:latest .
+docker build --build-arg EXTRAS=web_sat -t ghcr.io/neongeckocom/neon-iris:latest .
 ```
 
 ### Running

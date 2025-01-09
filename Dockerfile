@@ -7,7 +7,8 @@ LABEL vendor=neon.ai \
 # Build argument for specifying extras
 ARG EXTRAS
 
-ENV OVOS_CONFIG_BASE_FOLDER=neon \
+ENV OVOS_DEFAULT_CONFIG=/opt/neon/neon.yaml \
+    OVOS_CONFIG_BASE_FOLDER=neon \
     OVOS_CONFIG_FILENAME=neon.yaml \
     XDG_CONFIG_HOME=/config
 # Set the ARG value as an environment variable
