@@ -30,7 +30,7 @@ import os
 import sys
 import unittest
 
-from neon_utils.mq_utils import NeonMQHandler
+from neon_mq_connector.utils.client_utils import NeonMQHandler
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from neon_iris.client import NeonAIClient

@@ -42,7 +42,7 @@ from ovos_utils.json_helper import merge_dict
 from pika.exceptions import StreamLostError
 from neon_utils.configuration_utils import get_neon_user_config
 from neon_utils.metrics_utils import Stopwatch
-from neon_utils.mq_utils import NeonMQHandler
+from neon_mq_connector.utils.client_utils import NeonMQHandler
 from neon_utils.socket_utils import b64_to_dict
 from neon_utils.file_utils import decode_base64_string_to_file, \
     encode_file_to_base64_string
@@ -130,6 +130,9 @@ class NeonAIClient:
         """
         try:
             self._connection.stop()
+            # TODO: This is patching bad behavior in upstream neon_mq_connector
+            if self._connection.connection.is_open:
+                self._connection.connection.close()
         except Exception as e:
             LOG.error(e)
             try:
