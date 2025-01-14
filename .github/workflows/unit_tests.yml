@@ -9,6 +9,7 @@ jobs:
   py_build_tests:
     uses: neongeckocom/.github/.github/workflows/python_build_tests.yml@master
   unit_tests:
+    timeout-minutes: 5
     strategy:
       matrix:
         python-version: [3.8, 3.9, '3.10', '3.11']

@@ -145,6 +145,7 @@ class NeonAIClient:
             except Exception as x:
                 LOG.exception(x)
                 LOG.error("Consumers not shutdown")
+            raise e
 
     def handle_neon_response(self, channel, method, _, body):
         """
