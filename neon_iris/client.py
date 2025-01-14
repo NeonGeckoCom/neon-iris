@@ -133,6 +133,8 @@ class NeonAIClient:
             # TODO: This is patching bad behavior in upstream neon_mq_connector
             if self._connection.connection.is_open:
                 self._connection.connection.close()
+            LOG.info("Requested connection close")
+            del self._connection.connection
         except Exception as e:
             LOG.error(e)
             try:
