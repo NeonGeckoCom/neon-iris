@@ -3,5 +3,5 @@ click-default-group~=1.2
 neon-utils~=1.0,>=1.11.1a7
 pyyaml>=5.4,<7.0.0
 neon-mq-connector~=0.7,>=0.7.2a10
-ovos-bus-client~=0.0,>=0.0.3
-ovos-config~=0.1
+ovos-bus-client~=0.0,>=0.0.3,<0.2.0
+ovos-config~=0.1,<0.2.0
