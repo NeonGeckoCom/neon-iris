@@ -129,12 +129,7 @@ class NeonAIClient:
         Cleanly shuts down the MQ connection associated with this client
         """
         try:
-            self._connection.stop()
-            # TODO: This is patching bad behavior in upstream neon_mq_connector
-            if self._connection.connection.is_open:
-                self._connection.connection.close()
-            LOG.info("Requested connection close")
-            del self._connection.connection
+            self._connection.shutdown()
         except Exception as e:
             LOG.error(e)
             try:
@@ -395,7 +390,7 @@ class NeonAIClient:
                                         "neon_chat_api_error",
                                         self.handle_neon_error,
                                         auto_ack=False)
-        mq_connection.run(daemon=True)
+        mq_connection.run(daemonize_consumers=True)
         return mq_connection
 
 
