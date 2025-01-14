@@ -2,7 +2,6 @@ click~=8.0
 click-default-group~=1.2
 neon-utils~=1.0,>=1.11.1a7
 pyyaml>=5.4,<7.0.0
-#neon-mq-connector~=0.7,>=0.7.2a10
-neon-mq-connector@git+https://github.com/neongeckocom/neon_mq_connector@FEAT_ClientHandlerShutdown
+neon-mq-connector~=0.7,>=0.7.2a11
 ovos-bus-client~=0.0,>=0.0.3,<0.2.0
 ovos-config~=0.1,<0.2.0
