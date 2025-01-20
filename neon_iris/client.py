@@ -382,6 +382,8 @@ class NeonAIClient:
 
     def _init_mq_connection(self):
         mq_config = self._config.get("MQ") or self._config
+        NeonMQHandler.async_consumers_enabled = mq_config.get("async_consumers",
+                                                              True)
         mq_connection = NeonMQHandler(mq_config, "mq_handler", self._vhost)
         mq_connection.register_consumer("neon_response_handler", self._vhost,
                                         self.uid, self.handle_neon_response,
