@@ -39,10 +39,9 @@ from typing import Optional
 from uuid import uuid4
 from ovos_bus_client.message import Message
 from ovos_utils.json_helper import merge_dict
-from pika.exceptions import StreamLostError
+from neon_iris.mq_connector import IrisConnector
 from neon_utils.configuration_utils import get_neon_user_config
 from neon_utils.metrics_utils import Stopwatch
-from neon_mq_connector.utils.client_utils import NeonMQHandler
 from neon_utils.socket_utils import b64_to_dict
 from neon_utils.file_utils import decode_base64_string_to_file, \
     encode_file_to_base64_string
@@ -107,21 +106,10 @@ class NeonAIClient:
         return json.loads(json.dumps(self._user_config.content))
 
     @property
-    def connection(self) -> NeonMQHandler:
+    def connection(self) -> IrisConnector:
         """
         Returns a connected NeonMQHandler object
         """
-        if not self._connection.connection.is_open:
-            LOG.warning("Connection closed")
-            self._connection.stop()
-            self._connection = self._init_mq_connection()
-        try:
-            self._connection.connection.channel()
-        except StreamLostError:
-            LOG.warning("Connection unexpectedly closed, recreating")
-            self._connection.stop()
-            self._connection = self._init_mq_connection()
-
         return self._connection
 
     def shutdown(self):
@@ -382,9 +370,8 @@ class NeonAIClient:
 
     def _init_mq_connection(self):
         mq_config = self._config.get("MQ") or self._config
-        NeonMQHandler.async_consumers_enabled = mq_config.get("async_consumers",
-                                                              True)
-        mq_connection = NeonMQHandler(mq_config, "mq_handler", self._vhost)
+        mq_connection = IrisConnector(vhost=self._vhost, config=mq_config,
+                                      service_name="mq_handler")
         mq_connection.register_consumer("neon_response_handler", self._vhost,
                                         self.uid, self.handle_neon_response,
                                         auto_ack=False)
@@ -392,7 +379,8 @@ class NeonAIClient:
                                         "neon_chat_api_error",
                                         self.handle_neon_error,
                                         auto_ack=False)
-        mq_connection.run(daemonize_consumers=True)
+        mq_connection.start()
+        mq_connection.wait_for_connection()
         return mq_connection
 
 
