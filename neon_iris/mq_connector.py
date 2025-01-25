@@ -114,6 +114,9 @@ class IrisConnector(MQConnector, Thread):
             self._connection = self.init_connection()
 
     def shutdown(self):
+        """
+        Clean up this object. Closes all connections and stops any processing.
+        """
         try:
             self._stopping = True
             if self.connection and not (self.connection.is_closed or
@@ -131,6 +134,7 @@ class IrisConnector(MQConnector, Thread):
 
             if self.connection:
                 self.connection.ioloop.stop()
+            MQConnector.stop(self)
             self._ready.clear()
 
         except Exception as e:

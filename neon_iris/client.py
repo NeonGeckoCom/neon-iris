@@ -118,6 +118,7 @@ class NeonAIClient:
         """
         try:
             self._connection.shutdown()
+            LOG.info("Shut down Connection")
         except Exception as e:
             LOG.error(e)
             try:
