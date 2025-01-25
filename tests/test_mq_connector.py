@@ -26,40 +26,51 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE,  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os
-import sys
+
 import unittest
+from threading import Thread
 
-from neon_iris.mq_connector import IrisConnector
+import pytest
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-from neon_iris.client import NeonAIClient
+from os import environ
+from neon_minerva.integration.rabbit_mq import rmq_instance
+from neon_mq_connector import MQConnector
+from pika.adapters.select_connection import SelectConnection
 
-_test_config = {
-    "MQ": {
-        "server": "mq.2022.us",
-        "port": 25672,
-        "users": {
-            "mq_handler": {
-                "user": "neon_api_utils",
-                "password": "Klatchat2021"
-            }
-        }
-    }
-}
+environ['TEST_RMQ_USERNAME'] = "test_user"
+environ['TEST_RMQ_PASSWORD'] = "test_password"
+environ['TEST_RMQ_VHOSTS'] = "/neon_chat_api"
 
 
+@pytest.mark.usefixtures("rmq_instance")
 class TestClient(unittest.TestCase):
-    def test_client_create(self):
-        client = NeonAIClient(_test_config)
-        self.assertIsInstance(client.uid, str)
-        self.assertEqual(client._config, _test_config)
-        self.assertEqual(client._connection.config, _test_config["MQ"])
-        self.assertTrue(os.path.isdir(client.audio_cache_dir))
-        self.assertIsInstance(client.client_name, str)
-        self.assertIsInstance(client.connection, IrisConnector)
-        self.assertEqual(client.connection.vhost, "/neon_chat_api")
-        client.shutdown()
+    mq_config = {"server": "localhost",
+                 "port": None,
+                 "users": {"mq_handler": {"user": "test_user",
+                                          "password": "test_password"}}}
+
+    def setUp(self):
+        if self.mq_config["port"] is None:
+            self.mq_config["port"] = self.rmq_instance.port
+
+    def test_lifecycle(self):
+        from neon_iris.mq_connector import IrisConnector
+        connector = IrisConnector(vhost="/neon_chat_api", config=self.mq_config)
+        self.assertIsInstance(connector, MQConnector)
+        self.assertIsInstance(connector.connection, SelectConnection)
+        self.assertFalse(connector.ready)
+
+        # Start the connector
+        thread = Thread(target=connector.run)
+        thread.start()
+        connector.wait_for_connection()
+        self.assertTrue(connector.ready)
+
+        # Stop the connector
+        connector.shutdown()
+        self.assertFalse(connector.ready)
+        thread.join(timeout=5)
+        self.assertFalse(thread.is_alive())
 
 
 if __name__ == '__main__':

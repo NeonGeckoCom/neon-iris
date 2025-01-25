@@ -41,6 +41,9 @@ class IrisConnector(MQConnector, Thread):
 
     def __init__(self, *args, **kwargs):
         vhost = kwargs.pop('vhost')
+        # TODO: service_name chosen for backwards-compat. and should be updated
+        #   to something more descriptive
+        kwargs['service_name'] = 'mq_handler'
         Thread.__init__(self, daemon=True)
         MQConnector.__init__(self, *args, **kwargs)
         self.vhost = vhost
@@ -62,8 +65,12 @@ class IrisConnector(MQConnector, Thread):
             self._connection = self.init_connection()
         return self._connection
 
+    @property
+    def ready(self) -> bool:
+        return self._ready.is_set()
+
     def run(self, *args, **kwargs):
-        MQConnector.run(self, daemonize_consumers=True)
+        MQConnector.run(self)
         self._connection.ioloop.start()
 
     def init_connection(self) -> SelectConnection:
@@ -124,7 +131,7 @@ class IrisConnector(MQConnector, Thread):
 
             if self.connection:
                 self.connection.ioloop.stop()
-            # self.connection = None
+            self._ready.clear()
 
         except Exception as e:
             LOG.error(f"Failed to close connection: {e}")

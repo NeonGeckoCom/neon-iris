@@ -370,8 +370,7 @@ class NeonAIClient:
 
     def _init_mq_connection(self):
         mq_config = self._config.get("MQ") or self._config
-        mq_connection = IrisConnector(vhost=self._vhost, config=mq_config,
-                                      service_name="mq_handler")
+        mq_connection = IrisConnector(vhost=self._vhost, config=mq_config)
         mq_connection.register_consumer("neon_response_handler", self._vhost,
                                         self.uid, self.handle_neon_response,
                                         auto_ack=False)
