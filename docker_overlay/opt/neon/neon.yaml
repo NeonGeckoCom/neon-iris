@@ -1,5 +1,4 @@
 MQ:
-  async_consumers: True
   server: neon-rabbitmq
   port: 5672
   users:
