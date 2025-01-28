@@ -24,11 +24,11 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE,  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from time import sleep
-
+import asyncio
+import contextlib
 import pika.exceptions
 
-from asyncio import Event as AsyncEvent
+from asyncio import Event as AsyncEvent, run, wait_for
 from threading import Event, Thread
 from neon_mq_connector.utils.client_utils import MQConnector
 from ovos_utils import LOG
@@ -55,8 +55,8 @@ class IrisConnector(MQConnector, Thread):
 
     def wait_for_connection(self):
         LOG.info("Waiting for connection")
-        while not self._ready.is_set():
-            sleep(0.5)
+        with contextlib.suppress(asyncio.TimeoutError):
+            run(wait_for(self._ready.wait(), timeout=5))
         LOG.info("Connected!")
 
     @property
@@ -80,7 +80,7 @@ class IrisConnector(MQConnector, Thread):
             on_open_error_callback=self.on_connection_fail,
             on_close_callback=self.on_close)
 
-    def on_connected(self, _):
+    def on_connected(self, _: pika.SelectConnection):
         """Called when we are fully connected to RabbitMQ"""
         LOG.info("MQ Connected")
         self.connection.channel(on_open_callback=self.on_channel_open)
@@ -100,7 +100,7 @@ class IrisConnector(MQConnector, Thread):
         LOG.info(f"Channel closed.")
         self._channel_closed.set()
 
-    def on_close(self, _, e):
+    def on_close(self, _: pika.SelectConnection, e: Exception):
         if isinstance(e, pika.exceptions.ConnectionClosed):
             LOG.info(f"Connection closed normally: {e}")
         elif isinstance(e, pika.exceptions.StreamLostError):
