@@ -28,7 +28,7 @@ import asyncio
 import contextlib
 import pika.exceptions
 
-from asyncio import Event as AsyncEvent, run, wait_for
+from asyncio import Event as AsyncEvent, wait_for
 from threading import Event, Thread
 from neon_mq_connector.utils.client_utils import MQConnector
 from ovos_utils import LOG
@@ -56,7 +56,8 @@ class IrisConnector(MQConnector, Thread):
     def wait_for_connection(self):
         LOG.info("Waiting for connection")
         with contextlib.suppress(asyncio.TimeoutError):
-            run(wait_for(self._ready.wait(), timeout=5))
+            self._connection.ioloop.run_until_complete(
+                wait_for(self._ready.wait(), timeout=5))
         LOG.info("Connected!")
 
     @property
