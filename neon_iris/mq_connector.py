@@ -24,11 +24,10 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE,  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import asyncio
-import contextlib
 import pika.exceptions
 
-from asyncio import Event as AsyncEvent, wait_for
+from time import sleep
+from asyncio import Event as AsyncEvent
 from threading import Event, Thread
 from neon_mq_connector.utils.client_utils import MQConnector
 from ovos_utils import LOG
@@ -54,10 +53,12 @@ class IrisConnector(MQConnector, Thread):
         self._connection = self.init_connection()
 
     def wait_for_connection(self):
+        async def _wait_for_connection():
+            sleep(0.5)
+
         LOG.info("Waiting for connection")
-        with contextlib.suppress(asyncio.TimeoutError):
-            self._connection.ioloop.run_until_complete(
-                wait_for(self._ready.wait(), timeout=5))
+        while not self._ready.is_set():
+            self.connection.ioloop.add_callback_threadsafe(_wait_for_connection)
         LOG.info("Connected!")
 
     @property
