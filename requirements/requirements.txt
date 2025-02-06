@@ -2,6 +2,6 @@ click~=8.0
 click-default-group~=1.2
 neon-utils[sentry]~=1.12
 pyyaml>=5.4,<7.0.0
-neon-mq-connector~=0.7,>=0.7.2a12
+neon-mq-connector~=0.8
 ovos-bus-client~=0.0
 ovos-config~=0.1,<0.2.0
