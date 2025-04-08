@@ -5,3 +5,4 @@ pyyaml>=5.4,<7.0.0
 neon-mq-connector~=0.9
 ovos-bus-client~=0.0
 ovos-config~=0.1
+neon-data-models~=0.0,>=0.0.2a2
