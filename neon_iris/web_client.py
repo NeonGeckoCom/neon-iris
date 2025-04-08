@@ -284,11 +284,11 @@ class GradIOClient(NeonAIClient):
         response = NeonTtsResponse(msg_type=message.msg_type,
                                    data=message.data,
                                    context=message.context)
-        LOG.debug(f"gradio context={message.context.get('gradio')}")
+        LOG.debug(f"gradio context={response.context.gradio}")
         resp_data = response.data.responses
         files = []
         sentences = []
-        session = message.context['gradio']['session']
+        session = response.context.gradio.session
         LOG.debug(f"Got response {resp_data}")
         for lang, response in resp_data.items():
             LOG.debug(f"Response for {lang}: {response}")

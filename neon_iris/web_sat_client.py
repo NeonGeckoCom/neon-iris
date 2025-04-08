@@ -44,6 +44,7 @@ from ovos_bus_client import Message
 from ovos_config import Configuration
 from ovos_utils import LOG
 from ovos_utils.xdg_utils import xdg_data_home
+from neon_data_models.models.api.messagebus import NeonTtsResponse
 
 from neon_iris.client import NeonAIClient
 from neon_iris.models.web_sat import UserInput, UserInputResponse
@@ -107,14 +108,17 @@ class WebSatNeonClient(NeonAIClient):
         audio in all requested languages.
         @param message: Neon response message
         """
-        LOG.debug(f"gradio context={message.context['gradio']}")
-        resp_data = message.data["responses"]
+        response = NeonTtsResponse(msg_type=message.msg_type,
+                                   data=message.data,
+                                   context=message.context)
+        LOG.debug(f"gradio context={response.context.gradio}")
+        resp_data = response.data.responses
         sentences = []
-        session = message.context["gradio"]["session"]
+        session = response.context.gradio.session
         for _, response in resp_data.items():  # lang, response
-            sentences.append(response.get("sentence"))
-            if response.get("audio"):
-                for _, data in response["audio"].items():
+            sentences.append(response.sentence)
+            if response.audio:
+                for _, data in response.audio.items():
                     self._current_tts[session] = data
         self._response = "\n".join(sentences)
         self._await_response.set()
