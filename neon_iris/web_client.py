@@ -58,21 +58,29 @@ class GradIOClient(NeonAIClient):
         self._audio_path = join(xdg_data_home(), "iris", "stt")
         if not isdir(self._audio_path):
             makedirs(self._audio_path)
-        self.default_lang = lang or self.config.get('default_lang')
+        self.default_lang = (lang or 
+                             self.config.get('default_lang')).split('-')[0]
         self.chat_ui = gradio.Blocks()
 
-    def get_lang(self, session_id: str):
+    def get_lang(self, session_id: str) -> str:
+        """
+        Get the ISO 639-1 language code for the specified session
+        @param session_id: Gradio session ID
+        @returns: ISO 639-1 language code
+        """
         if session_id and session_id in self._profiles:
-            return self._profiles[session_id]['speech']['stt_language']
-        return self.user_config['speech']['stt_language'] or self.default_lang
+            return self._profiles[session_id]['speech']['stt_language'].split('-')[0]
+        return (self.user_config['speech']['stt_language'] or 
+                self.default_lang).split('-')[0]
 
     @property
     def supported_languages(self) -> List[str]:
         """
         Get a list of supported languages from configuration
-        @returns: list of BCP-47 language codes
+        @returns: list of ISO 639-1 language codes
         """
-        return self.config.get('languages') or [self.default_lang]
+        return [lang.split('-')[0] for lang in 
+                self.config.get('languages') or [self.default_lang]]
 
     def _start_session(self):
         sid = uuid4().hex
@@ -228,7 +236,7 @@ class GradIOClient(NeonAIClient):
                 check_alerts = gradio.Button("Check for Alerts")
             with gradio.Row():
                 with gradio.Column():
-                    lang = self.get_lang(client_session.value).split('-')[0]
+                    lang = self.get_lang(client_session.value)
                     stt_lang = gradio.Radio(label="Input Language",
                                             choices=self._languages.get("stt")
                                             or self.supported_languages,
