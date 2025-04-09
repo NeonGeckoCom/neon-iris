@@ -142,18 +142,19 @@ class NeonAIClient:
         with _stopwatch:
             response = b64_to_dict(body)
         LOG.debug(f"Message deserialized in {_stopwatch.time}s")
+        # TODO: This is an MQ response object
         message = Message(response.get('msg_type'), response.get('data'),
                           response.get('context'))
 
         # Get timing data and log
         message.context.setdefault("timing", {})
-        resp_time = message.context['timing'].get('response_sent', recv_time)
+        resp_time = message.context['timing'].get('response_sent') or recv_time
         if recv_time != resp_time:
             transit_time = recv_time - resp_time
             message.context['timing']['client_from_core'] = transit_time
             LOG.debug(f"Response MQ transit time={transit_time}")
-        handling_time = recv_time - message.context['timing'].get('client_sent',
-                                                                  recv_time)
+        handling_time = recv_time - (message.context['timing'].get(
+            'client_sent') or recv_time)
         LOG.info(f"{message.msg_type} handled in {handling_time}")
         LOG.debug(f"{pformat(message.context['timing'])}")
         if message.msg_type == "klat.response":

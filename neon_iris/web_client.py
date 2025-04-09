@@ -37,9 +37,9 @@ from ovos_bus_client import Message
 from ovos_config import Configuration
 from ovos_utils import LOG
 from ovos_utils.json_helper import merge_dict
-
 from neon_utils.file_utils import decode_base64_string_to_file
 from ovos_utils.xdg_utils import xdg_data_home
+from neon_data_models.models.api.messagebus import NeonTtsResponse
 
 from neon_iris.client import NeonAIClient
 
@@ -281,17 +281,24 @@ class GradIOClient(NeonAIClient):
         audio in all requested languages.
         @param message: Neon response message
         """
-        LOG.debug(f"gradio context={message.context['gradio']}")
-        resp_data = message.data["responses"]
+        response = NeonTtsResponse(msg_type=message.msg_type,
+                                   data=message.data,
+                                   context=message.context)
+        LOG.debug(f"gradio context={response.context.gradio}")
+        resp_data = response.data.responses
         files = []
         sentences = []
-        session = message.context['gradio']['session']
+        session = response.context.gradio.session
+        LOG.debug(f"Got response {resp_data}")
         for lang, response in resp_data.items():
-            sentences.append(response.get("sentence"))
-            if response.get("audio"):
-                for gender, data in response["audio"].items():
+            LOG.debug(f"Response for {lang}: {response}")
+            sentences.append(response.sentence)
+            if response.audio:
+                for gender, data in response.audio.items():
+                    audio_path = getattr(response, gender)
+                    LOG.debug(f"Got audio file: {audio_path}")
                     filepath = "/".join([self.audio_cache_dir] +
-                                        response[gender].split('/')[-4:])
+                                        audio_path.split('/')[-4:])
                     # TODO: This only plays the most recent, so it doesn't
                     #  support multiple languages or multi-utterance responses
                     self._current_tts[session] = filepath
