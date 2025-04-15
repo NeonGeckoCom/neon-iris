@@ -73,7 +73,8 @@ class WebSatNeonClient(NeonAIClient):
         )  # TODO: Clear periodically, or have persistent storage
         if not isdir(self._audio_path):
             makedirs(self._audio_path)
-        self.default_lang = lang or self.config.get("default_lang", "")
+        self.default_lang = (lang or 
+                             self.config.get("default_lang", "")).split('-')[0]
         LOG.name = "iris"
         LOG.init(self.config.get("logs"))
         # OpenWW
@@ -87,10 +88,11 @@ class WebSatNeonClient(NeonAIClient):
         self.build_routes()
 
     def get_lang(self, session_id: str):
-        """Get the language for a session."""
+        """Get the ISO 693-1 language code for a session."""
         if session_id and session_id in self._profiles:
             return self._profiles[session_id]["speech"]["stt_language"]
-        return self.user_config["speech"]["stt_language"] or self.default_lang
+        return (self.user_config["speech"]["stt_language"] or 
+                self.default_lang).split('-')[0]
 
     def handle_api_response(self, message: Message):
         """
@@ -126,7 +128,7 @@ class WebSatNeonClient(NeonAIClient):
     def send_audio( # pylint: disable=arguments-renamed
         self,
         audio_b64_string: str,
-        lang: str = "en-us",
+        lang: str = "en",
         username: Optional[str] = None,
         user_profiles: Optional[list] = None,
         context: Optional[dict] = None,
@@ -155,9 +157,9 @@ class WebSatNeonClient(NeonAIClient):
     def supported_languages(self) -> Sequence[str]:
         """
         Get a list of supported languages from configuration
-        @returns: list of BCP-47 language codes
+        @returns: list of ISO 639-1 language codes
         """
-        languages = self.config.get("languages")
+        languages = [l.split('-')[0] for l in self.config.get("languages")]
         if languages is None:
             return [self.default_lang]
         if not isinstance(languages, list):
@@ -270,7 +272,7 @@ class WebSatNeonClient(NeonAIClient):
                 LOG.info(f"Sending utterance: {utterance} with lang: {lang}")
                 self.send_utterance(
                     utterance,
-                    lang or "en-us",
+                    lang or "en",
                     username=session_id,
                     user_profiles=[self._profiles[session_id]],
                     context={
@@ -282,7 +284,7 @@ class WebSatNeonClient(NeonAIClient):
                 LOG.info(f"Sending audio with length of {len(audio_input)} with lang: {lang}")
                 self.send_audio(
                     audio_input,
-                    lang or "en-us",
+                    lang or "en",
                     username=session_id,
                     user_profiles=[self._profiles[session_id]],
                     context={

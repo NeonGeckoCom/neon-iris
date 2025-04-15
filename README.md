@@ -28,10 +28,10 @@ MQ:
       user: neon_api_utils
       password: Klatchat2021
 iris:
-  default_lang: en-us
+  default_lang: en
   languages:
-    - en-us
-    - uk-ua
+    - en
+    - uk
   webui_chatbot_label: "Neon AI"
   webui_mic_label: "Speak with Neon"
   webui_input_placeholder: "Chat with Neon"

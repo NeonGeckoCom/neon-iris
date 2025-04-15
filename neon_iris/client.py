@@ -266,32 +266,36 @@ class NeonAIClient:
         self._languages = message.data
         if not all((x in self._languages for x in ("stt", "tts"))):
             LOG.warning(f"Language support incomplete response: {self._languages}")
+        self._languages['stt'] = [l.split('-')[0] 
+                                  for l in self._languages.get('stt', [])]
+        self._languages['tts'] = [l.split('-')[0] 
+                                  for l in self._languages.get('tts', [])]
         self._languages['stt'].sort()
         self._languages['tts'].sort()
         self._language_init.set()
 
-    def send_utterance(self, utterance: str, lang: str = "en-us",
+    def send_utterance(self, utterance: str, lang: str = "en",
                        username: Optional[str] = None,
                        user_profiles: Optional[list] = None,
                        context: Optional[dict] = None):
         """
         Optionally override this to queue text inputs or do any pre-parsing
         :param utterance: utterance to submit to skills module
-        :param lang: language code associated with request
+        :param lang: ISO 639-1 language code associated with request
         :param username: username associated with request
         :param user_profiles: user profiles expecting a response
         :param context: Optional dict context to add to emitted message
         """
         self._send_utterance(utterance, lang, username, user_profiles, context)
 
-    def send_audio(self, audio_file: str, lang: str = "en-us",
+    def send_audio(self, audio_file: str, lang: str = "en",
                    username: Optional[str] = None,
                    user_profiles: Optional[list] = None,
                    context: Optional[dict] = None):
         """
         Optionally override this to queue audio inputs or do any pre-parsing
         :param audio_file: path to audio file to send to speech module
-        :param lang: language code associated with request
+        :param lang: ISO 639-1 language code associated with request
         :param username: username associated with request
         :param user_profiles: user profiles expecting a response
         :param context: Optional dict context to add to emitted message
@@ -475,12 +479,12 @@ class CLIClient(NeonAIClient):
     def clear_media(self, message: Message):
         pass
 
-    def send_utterance(self, utterance: str, lang: str = "en-us",
+    def send_utterance(self, utterance: str, lang: str = "en",
                        _=None, __=None):
         """
         Queue a string request for skills processing
         :param utterance: User utterance to submit
-        :param lang: language of utterance
+        :param lang: ISO 639-1 language of utterance
         """
         self._response_event.clear()
         self._request_queue.put((utterance, lang))
@@ -489,12 +493,12 @@ class CLIClient(NeonAIClient):
         while not self._request_queue.empty():
             self._response_event.wait(30)
 
-    def send_audio(self, audio_file: str, lang: str = "en-us",
+    def send_audio(self, audio_file: str, lang: str = "en",
                    _=None, __=None):
         """
         Send an audio file for skills processing
         :param audio_file: Audio File to submit for STT processing
-        :param lang: language of audio
+        :param lang: ISO 639-1 language of audio
         """
         self._response_event.clear()
         self._send_audio(audio_file, lang, self.username, self.user_profiles)
