@@ -159,7 +159,7 @@ class WebSatNeonClient(NeonAIClient):
         Get a list of supported languages from configuration
         @returns: list of ISO 639-1 language codes
         """
-        languages = [l.split('-')[0] for l in self.config.get("languages")]
+        languages = [lang.split('-')[0] for lang in self.config.get("languages")]
         if languages is None:
             return [self.default_lang]
         if not isinstance(languages, list):
