@@ -29,7 +29,9 @@ from os.path import isfile, join, isdir
 from time import time
 from typing import List, Dict, Tuple
 from uuid import uuid4
+from fastapi import FastAPI, Response
 
+import uvicorn
 import gradio
 
 from threading import Event
@@ -281,7 +283,17 @@ class GradIOClient(NeonAIClient):
                          outputs=[client_session])
             check_alerts.click(self.check_alerts, inputs=[client_session],
                                outputs=[client_session])
-            blocks.queue().launch(server_name=address, server_port=port)
+            app = FastAPI()
+
+            def _health_check(*_):
+                if self.connection.check_health():
+                    return Response(status_code=200, content="OK")
+                else:
+                    return Response(status_code=500, content="Health check failed")
+
+            app.add_route("/health", _health_check, methods=["GET"])
+            gr_app = gradio.mount_gradio_app(app, blocks, '')
+            uvicorn.run(gr_app, host=address, port=port)
 
     def handle_klat_response(self, message: Message):
         """

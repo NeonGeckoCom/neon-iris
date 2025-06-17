@@ -35,7 +35,7 @@ from uuid import uuid4
 
 import numpy as np
 import resampy
-from fastapi import APIRouter, FastAPI, Request, WebSocket
+from fastapi import APIRouter, FastAPI, Request, WebSocket, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from neon_utils.file_utils import decode_base64_string_to_file
@@ -314,6 +314,13 @@ class WebSatNeonClient(NeonAIClient):
             )
             return resp
 
+    def health_check(self, *_):
+        if self.connection.check_health():
+            return Response(status_code=200, content="OK")
+        else:
+            return Response(status_code=500, content="Health check failed")
+
+
 
 app = FastAPI()
 neon_client = WebSatNeonClient()
@@ -323,7 +330,7 @@ app.mount(
     name="Neon Web Voice Satellite",
 )
 app.include_router(neon_client.router)
-
+app.add_route("/health", neon_client.health_check, methods=["GET"])
 
 if __name__ == "__main__":
     import uvicorn
