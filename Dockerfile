@@ -16,7 +16,7 @@ ENV EXTRAS=${EXTRAS}
 
 RUN mkdir -p /neon_iris/requirements
 COPY ./requirements/* /neon_iris/requirements
-RUN apt-get update && apt-get install --no-install-recommends -y git curl; rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install --no-install-recommends -y curl; rm -rf /var/lib/apt/lists/*
 RUN pip install wheel && pip install -r /neon_iris/requirements/requirements.txt
 RUN if [ "$EXTRAS" = "gradio" ]; then \
         pip install -r /neon_iris/requirements/gradio.txt; \
