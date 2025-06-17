@@ -287,11 +287,13 @@ class GradIOClient(NeonAIClient):
 
             def _health_check(*_):
                 if self.connection.check_health():
-                    return Response(status_code=200, content="OK")
+                    return Response(status_code=200, content="Ready")
+                elif not self.connection.ready:
+                    return Response(status_code=200, content="Starting")
                 else:
-                    return Response(status_code=500, content="Health check failed")
+                    return Response(status_code=500, content="Error")
 
-            app.add_route("/health", _health_check, methods=["GET"])
+            app.add_route("/status", _health_check, methods=["GET"])
             gr_app = gradio.mount_gradio_app(app, blocks, '')
             uvicorn.run(gr_app, host=address, port=port)
 

@@ -31,7 +31,7 @@ else
   port=8000
 fi
 # Perform the health check using curl
-resp=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${port}/health)
+resp=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${port}/status)
 
 # Check if the response code is 200
 if [ "$resp" == "200" ]; then

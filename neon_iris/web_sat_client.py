@@ -316,9 +316,11 @@ class WebSatNeonClient(NeonAIClient):
 
     def health_check(self, *_):
         if self.connection.check_health():
-            return Response(status_code=200, content="OK")
+            return Response(status_code=200, content="Ready")
+        elif not self.connection.ready:
+            return Response(status_code=200, content="Starting")
         else:
-            return Response(status_code=500, content="Health check failed")
+            return Response(status_code=500, content="Error")
 
 
 
@@ -330,7 +332,7 @@ app.mount(
     name="Neon Web Voice Satellite",
 )
 app.include_router(neon_client.router)
-app.add_route("/health", neon_client.health_check, methods=["GET"])
+app.add_route("/status", neon_client.health_check, methods=["GET"])
 
 if __name__ == "__main__":
     import uvicorn
