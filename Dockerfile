@@ -16,7 +16,7 @@ ENV EXTRAS=${EXTRAS}
 
 RUN mkdir -p /neon_iris/requirements
 COPY ./requirements/* /neon_iris/requirements
-
+RUN apt-get update && apt-get install --no-install-recommends -y curl; rm -rf /var/lib/apt/lists/*
 RUN pip install wheel && pip install -r /neon_iris/requirements/requirements.txt
 RUN if [ "$EXTRAS" = "gradio" ]; then \
         pip install -r /neon_iris/requirements/gradio.txt; \
@@ -27,7 +27,7 @@ RUN if [ "$EXTRAS" = "gradio" ]; then \
     fi
 
 WORKDIR /neon_iris
-ADD . /neon_iris
+COPY . /neon_iris
 RUN pip install .
 
 COPY docker_overlay/ /
@@ -47,4 +47,5 @@ RUN groupadd -r neon && useradd -r -m -g neon neon \
 # Use the non-root user to run the container
 USER neon
 
+HEALTHCHECK CMD "/neon_iris/healthcheck.sh"
 ENTRYPOINT ["/neon_iris/entrypoint.sh"]

@@ -35,7 +35,7 @@ from uuid import uuid4
 
 import numpy as np
 import resampy
-from fastapi import APIRouter, FastAPI, Request, WebSocket
+from fastapi import APIRouter, FastAPI, Request, WebSocket, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from neon_utils.file_utils import decode_base64_string_to_file
@@ -159,7 +159,7 @@ class WebSatNeonClient(NeonAIClient):
         Get a list of supported languages from configuration
         @returns: list of ISO 639-1 language codes
         """
-        languages = [l.split('-')[0] for l in self.config.get("languages")]
+        languages = [lang.split('-')[0] for lang in self.config.get("languages")]
         if languages is None:
             return [self.default_lang]
         if not isinstance(languages, list):
@@ -314,6 +314,15 @@ class WebSatNeonClient(NeonAIClient):
             )
             return resp
 
+    def health_check(self, *_):
+        if self.connection.check_health():
+            return Response(status_code=200, content="Ready")
+        elif not self.connection.ready:
+            return Response(status_code=200, content="Starting")
+        else:
+            return Response(status_code=500, content="Error")
+
+
 
 app = FastAPI()
 neon_client = WebSatNeonClient()
@@ -323,7 +332,7 @@ app.mount(
     name="Neon Web Voice Satellite",
 )
 app.include_router(neon_client.router)
-
+app.add_route("/status", neon_client.health_check, methods=["GET"])
 
 if __name__ == "__main__":
     import uvicorn
