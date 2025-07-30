@@ -28,7 +28,6 @@ from os import makedirs
 from os.path import isfile, join, isdir
 from time import time
 from typing import List, Dict, Tuple
-from uuid import uuid4
 from fastapi import FastAPI, Response
 
 import uvicorn
@@ -84,8 +83,8 @@ class GradIOClient(NeonAIClient):
         return [lang.split('-')[0] for lang in 
                 self.config.get('languages') or [self.default_lang]]
 
-    def _start_session(self):
-        sid = uuid4().hex
+    def _start_session(self, request: gradio.Request):
+        sid = request.session_hash
         self._current_tts[sid] = None
         self._profiles[sid] = self.user_config
         self._profiles[sid]['user']['username'] = sid
@@ -201,8 +200,10 @@ class GradIOClient(NeonAIClient):
         port = self.config.get("server_port") or 7860
 
         with self.chat_ui as blocks:
-            client_session = gradio.State(self._start_session())
-            client_session.attach_load_event(self._start_session, None)
+            # Do session-specific initialization
+            client_session = gradio.State()
+            blocks.load(self._start_session, None, outputs=[client_session])
+
             # Define primary UI
             blocks.title = title
             chatbot = gradio.Chatbot(label=chatbot_label)
@@ -210,7 +211,7 @@ class GradIOClient(NeonAIClient):
                 textbox = gradio.Textbox(label=text_label,
                                          placeholder=placeholder,
                                          scale=8)
-                audio_input = gradio.Audio(source="microphone",
+                audio_input = gradio.Audio(sources=["microphone"],
                                            type="filepath",
                                            label=speech,
                                            scale=2)
