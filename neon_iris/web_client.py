@@ -142,6 +142,10 @@ class GradIOClient(NeonAIClient):
         @param utterance: String utterance submitted by the user
         @returns: Input box contents, Updated chat history, Gradio session ID, audio input, audio output
         """
+        if not any((utterance, audio_input)):
+            # Empty input
+            return chat_history, client_session, "", None, None
+
         input_time = time()
         LOG.debug("Input received")
         if not self._await_response.wait(30):
