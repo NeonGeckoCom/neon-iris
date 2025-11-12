@@ -352,7 +352,9 @@ class GradIOClient(NeonAIClient):
                 if self.connection.check_health():
                     return Response(status_code=200, content="Ready")
                 elif not self.connection.ready:
-                    return Response(status_code=200, content="Starting")
+                    # Connection is either not started or has been stopped,
+                    # maybe following an error
+                    return Response(status_code=503, content="Starting")
                 else:
                     return Response(status_code=500, content="Error")
 
