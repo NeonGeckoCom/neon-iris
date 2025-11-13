@@ -30,6 +30,7 @@ from time import time
 from typing import List, Dict
 from fastapi import FastAPI, Response
 
+from ovos_utils.process_utils import ProcessState
 import uvicorn
 import gradio
 
@@ -349,14 +350,23 @@ class GradIOClient(NeonAIClient):
             app = FastAPI()
 
             def _health_check(*_):
-                if self.connection.check_health():
-                    return Response(status_code=200, content="Ready")
-                elif not self.connection.ready:
-                    # Connection is either not started or has been stopped,
-                    # maybe following an error
+                if not self.connection.check_health():
+                    return Response(status_code=500, content="MQ Error")
+
+                if self.connection.status.state == ProcessState.ALIVE:
+                    # Startup
                     return Response(status_code=503, content="Starting")
-                else:
+                if self.connection.status.state == ProcessState.STOPPING:
+                    # Shutdown
+                    return Response(status_code=503, content="Stopping")
+                if self.connection.status.state == ProcessState.ERROR:
+                    # Error
                     return Response(status_code=500, content="Error")
+                if self.connection.status.state == ProcessState.READY:
+                    return Response(status_code=200, content="Ready")
+
+                # Catch-all exception case
+                return Response(status_code=500, content="Error")
 
             app.add_route("/status", _health_check, methods=["GET"])
             gr_app = gradio.mount_gradio_app(app, blocks, '')
