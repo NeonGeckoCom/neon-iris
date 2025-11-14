@@ -26,11 +26,12 @@
 
 import pika.exceptions
 
-from time import sleep
+from time import sleep, time
 from asyncio import Event as AsyncEvent
 from threading import Event, Thread
 from neon_mq_connector.utils.client_utils import MQConnector
-from ovos_utils import LOG
+from ovos_utils.log import LOG
+from ovos_utils.process_utils import ProcessStatus
 from pika.adapters.select_connection import SelectConnection
 from pika.channel import Channel
 
@@ -45,11 +46,13 @@ class IrisConnector(MQConnector, Thread):
         kwargs['service_name'] = 'mq_handler'
         Thread.__init__(self, daemon=True)
         MQConnector.__init__(self, *args, **kwargs)
+        self.status = ProcessStatus(name="iris")
         self.vhost = vhost
         self._ready = AsyncEvent()
         self._channel_closed = Event()
         self._stopping = False
 
+        self.status.set_alive()
         self._connection = self.init_connection()
 
     def wait_for_connection(self):
@@ -59,6 +62,7 @@ class IrisConnector(MQConnector, Thread):
         LOG.info("Waiting for connection")
         while not self._ready.is_set():
             self.connection.ioloop.add_callback_threadsafe(_wait_for_connection)
+        self.status.set_ready()
         LOG.info("Connected!")
 
     @property
@@ -85,21 +89,24 @@ class IrisConnector(MQConnector, Thread):
     def on_connected(self, _: pika.SelectConnection):
         """Called when we are fully connected to RabbitMQ"""
         LOG.info("MQ Connected")
+        self.status.set_ready()
         self.connection.channel(on_open_callback=self.on_channel_open)
 
     def on_connection_fail(self, *_, **__):
         """ Called when connection to RabbitMQ fails"""
-        LOG.error(f"Failed to connect to MQ")
+        LOG.error("Failed to connect to MQ")
+        self.status.set_error("MQ Connection failed")
         self._connection = None
 
     def on_channel_open(self, new_channel: Channel):
         """Called when our channel has opened"""
-        LOG.info(f"MQ Channel opened.")
+        LOG.info("MQ Channel opened.")
         new_channel.add_on_close_callback(self.on_channel_close)
         self._ready.set()
 
     def on_channel_close(self, *_, **__):
-        LOG.info(f"Channel closed.")
+        LOG.info("Channel closed.")
+        self.status.set_stopping()
         self._channel_closed.set()
 
     def on_close(self, _: pika.SelectConnection, e: Exception):
@@ -110,9 +117,10 @@ class IrisConnector(MQConnector, Thread):
                         "RabbitMQ is likely temporarily unavailable.")
         else:
             LOG.error(f"MQ connection closed due to exception: {e}")
+        self.status.set_stopping()
         if not self._stopping:
             # Connection was gracefully closed by the server. Try to re-connect
-            LOG.info(f"Trying to reconnect after server closed connection")
+            LOG.info("Trying to reconnect after server closed connection")
             self._connection = self.init_connection()
 
     def shutdown(self):
@@ -120,24 +128,30 @@ class IrisConnector(MQConnector, Thread):
         Clean up this object. Closes all connections and stops any processing.
         """
         try:
+            self.status.set_stopping()
             self._stopping = True
             if self.connection and not (self.connection.is_closed or
                                         self.connection.is_closing):
                 self.connection.close()
-                LOG.info(f"Waiting for channel close")
+                LOG.info("Waiting for channel close")
                 if not self._channel_closed.wait(15):
-                    raise TimeoutError(f"Timeout waiting for channel close.")
+                    raise TimeoutError("Timeout waiting for channel close.")
 
                 # Wait for the connection to close
                 waiter = Event()
-                while not self.connection.is_closed:
+                timeout = time() + 15
+                while not self.connection.is_closed and time() < timeout:
                     waiter.wait(1)
-                LOG.info(f"Connection closed")
+                if not self.connection.is_closed:
+                    raise TimeoutError("Timeout waiting for connection close.")
+                LOG.info("Connection closed")
 
             if self.connection:
+                LOG.info("Stopping IOLoop")
                 self.connection.ioloop.stop()
             MQConnector.stop(self)
             self._ready.clear()
+            LOG.info("MQ Connector shutdown complete")
 
         except Exception as e:
             LOG.error(f"Failed to close connection: {e}")

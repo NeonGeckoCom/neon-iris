@@ -39,6 +39,7 @@ from typing import Optional
 from uuid import uuid4
 from ovos_bus_client.message import Message
 from ovos_utils.json_helper import merge_dict
+from pika.exceptions import ConnectionWrongStateError
 from neon_iris.mq_connector import IrisConnector
 from neon_utils.configuration_utils import get_neon_user_config
 from neon_utils.metrics_utils import Stopwatch
@@ -370,9 +371,17 @@ class NeonAIClient:
                 queue="neon_chat_api_request",
                 request_data=serialized)
             LOG.debug(f"emitted {serialized.get('msg_type')}")
-        except Exception as e:
-            LOG.exception(e)
+        except ConnectionWrongStateError:
+            LOG.error("Restarting RMQ client and retrying")
             self.shutdown()
+            self._connection = self._init_mq_connection()
+            self.connection.emit_mq_message(
+                self._connection.connection,
+                queue="neon_chat_api_request",
+                request_data=serialized)
+        except Exception as e:
+            self.shutdown()
+            raise e
 
     def _init_mq_connection(self):
         mq_config = self._config.get("MQ") or self._config
