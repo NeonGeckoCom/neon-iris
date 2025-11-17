@@ -27,7 +27,6 @@
 import pika.exceptions
 
 from time import sleep, time
-from asyncio import Event as AsyncEvent
 from threading import Event, Thread
 from neon_mq_connector.utils.client_utils import MQConnector
 from ovos_utils.log import LOG
@@ -48,7 +47,7 @@ class IrisConnector(MQConnector, Thread):
         MQConnector.__init__(self, *args, **kwargs)
         self.status = ProcessStatus(name="iris")
         self.vhost = vhost
-        self._ready = AsyncEvent()
+        self._ready = Event()
         self._channel_closed = Event()
         self._stopping = False
 
@@ -56,12 +55,8 @@ class IrisConnector(MQConnector, Thread):
         self._connection = self.init_connection()
 
     def wait_for_connection(self):
-        async def _wait_for_connection():
-            sleep(0.5)
-
         LOG.info("Waiting for connection")
-        while not self._ready.is_set():
-            self.connection.ioloop.add_callback_threadsafe(_wait_for_connection)
+        self._ready.wait()
         self.status.set_ready()
         LOG.info("Connected!")
 
