@@ -37,7 +37,7 @@ from neon_iris.client import NeonAIClient
 
 _test_config = {
     "MQ": {
-        "server": "mq.2022.us",
+        "server": "mq.neonaialpha.com",
         "port": 25672,
         "users": {
             "mq_handler": {
