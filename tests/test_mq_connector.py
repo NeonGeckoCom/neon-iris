@@ -72,6 +72,3 @@ class TestClient(unittest.TestCase):
         thread.join(timeout=5)
         self.assertFalse(thread.is_alive())
 
-
-if __name__ == '__main__':
-    unittest.main()
