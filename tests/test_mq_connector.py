@@ -60,8 +60,9 @@ class TestClient(unittest.TestCase):
         self.assertIsInstance(connector.connection, SelectConnection)
         self.assertFalse(connector.ready)
 
-        # Start the connector
-        thread = Thread(target=connector.run)
+        # Start the connector (daemon so interpreter shutdown never blocks on the
+        # pika SelectConnection ioloop if cleanup is slow or flaky in CI).
+        thread = Thread(target=connector.run, daemon=True)
         thread.start()
         connector.wait_for_connection()
         self.assertTrue(connector.ready)

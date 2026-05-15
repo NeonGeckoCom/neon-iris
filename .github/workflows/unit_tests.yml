@@ -31,9 +31,10 @@ jobs:
 
       - name: Run Tests
         run: |
-          pytest tests
-      - name: Upload client test results
+          pytest tests \
+            --junitxml=tests/test-results-${{ matrix.python-version }}.xml
+      - name: Upload test results
         uses: actions/upload-artifact@v4
         with:
-          name: client-test-results
-          path: tests/client-test-results-${{ matrix.python-version }}.xml
+          name: test-results-${{ matrix.python-version }}
+          path: tests/test-results-${{ matrix.python-version }}.xml
