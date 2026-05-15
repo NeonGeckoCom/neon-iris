@@ -33,7 +33,6 @@ from threading import Thread
 import pytest
 
 from os import environ
-from neon_minerva.integration.rabbit_mq import rmq_instance
 from neon_mq_connector import MQConnector
 from pika.adapters.select_connection import SelectConnection
 
@@ -42,6 +41,7 @@ environ['TEST_RMQ_PASSWORD'] = "test_password"
 environ['TEST_RMQ_VHOSTS'] = "/neon_chat_api"
 
 
+# Fixture defined in neon_minerva.integration.rabbit_mq
 @pytest.mark.usefixtures("rmq_instance")
 class TestClient(unittest.TestCase):
     mq_config = {"server": "localhost",
@@ -72,6 +72,3 @@ class TestClient(unittest.TestCase):
         thread.join(timeout=5)
         self.assertFalse(thread.is_alive())
 
-
-if __name__ == '__main__':
-    unittest.main()

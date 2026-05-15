@@ -1,2 +1,2 @@
-pytest
-neon-minerva[rmq]>=0.2.1a3
+pytest~=8.0
+neon-minerva[rmq]>=0.3.1a4

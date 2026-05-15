@@ -27,17 +27,14 @@
 # SOFTWARE,  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
-import sys
 import unittest
 
 from neon_iris.mq_connector import IrisConnector
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from neon_iris.client import NeonAIClient
 
 _test_config = {
     "MQ": {
-        "server": "mq.2022.us",
+        "server": "mq.neonaialpha.com",
         "port": 25672,
         "users": {
             "mq_handler": {
@@ -61,6 +58,3 @@ class TestClient(unittest.TestCase):
         self.assertEqual(client.connection.vhost, "/neon_chat_api")
         client.shutdown()
 
-
-if __name__ == '__main__':
-    unittest.main()
