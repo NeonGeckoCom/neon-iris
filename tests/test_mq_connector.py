@@ -33,9 +33,12 @@ from threading import Thread
 import pytest
 
 from os import environ
-from neon_minerva.integration.rabbit_mq import rmq_instance
 from neon_mq_connector import MQConnector
 from pika.adapters.select_connection import SelectConnection
+
+# `rmq_instance` is provided by ``tests/conftest.py``; we deliberately avoid
+# importing the upstream fixture here because it has no teardown, which
+# leaves a RabbitMQ subprocess alive past the session and hangs CI shutdown.
 
 environ['TEST_RMQ_USERNAME'] = "test_user"
 environ['TEST_RMQ_PASSWORD'] = "test_password"
@@ -60,8 +63,8 @@ class TestClient(unittest.TestCase):
         self.assertIsInstance(connector.connection, SelectConnection)
         self.assertFalse(connector.ready)
 
-        # Start the connector (daemon so interpreter shutdown never blocks on the
-        # pika SelectConnection ioloop if cleanup is slow or flaky in CI).
+        # Start the connector (daemon so interpreter shutdown never blocks on
+        # the pika SelectConnection ioloop if cleanup is slow or flaky in CI).
         thread = Thread(target=connector.run, daemon=True)
         thread.start()
         connector.wait_for_connection()
