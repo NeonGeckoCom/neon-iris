@@ -143,7 +143,8 @@ class NeonAIClient:
         with _stopwatch:
             response = b64_to_dict(body)
         LOG.debug(f"Message deserialized in {_stopwatch.time}s")
-        # TODO: This is an MQ response object
+        # TODO: This should extend NeonApiMessage once that class is extended
+        # to include all of the below `msg_type`s
         message = Message(response.get('msg_type'), response.get('data'),
                           response.get('context'))
 
