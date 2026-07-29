@@ -1,2 +1,2 @@
 pytest~=8.0
-neon-minerva[rmq]~=0.4,>=0.4.1a1
+neon-minerva[rmq]~=0.4,>=0.4.1
