@@ -1,0 +1,61 @@
+/* Base styles for the split sprite */
+.sprite {
+  width: 40px; /* sprite width adjusted to 40px */
+  height: 40px; /* sprite height adjusted to 40px */
+  border-radius: 50%;
+  background-image: linear-gradient(to right, #000 50%, #fff 50%);
+  box-shadow: 0 0 0 2px #000; /* Adjusted border thickness for smaller size */
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  opacity: 0; /* sprite is invisible by default */
+  position: relative; /* Required for absolute positioning of pseudo-elements */
+  display: flex; /* Center content */
+  justify-content: center;
+  align-items: center;
+  margin: 20px;
+}
+
+/* Pulse animation while recording */
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.sprite.record {
+  animation: pulse 1s infinite ease-in-out;
+  opacity: 1; /* sprite is visible while recording */
+}
+
+/* Spin animation while waiting for a response */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.sprite.waiting {
+  animation: spin 2s infinite linear;
+  opacity: 1; /* sprite is visible while waiting */
+}
+
+/* Appear animation for wake word activation */
+@keyframes appear {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.sprite.wake {
+  animation: appear 1s forwards;
+  opacity: 1; /* sprite is visible when awake */
+}

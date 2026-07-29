@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <link rel="icon" href="static/custom/favicon.ico" type="image/x-icon" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="static/styles.css" />
+    <link rel="stylesheet" href="static/sprite.css" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --color-neon-green: #2b7b2b;
+        --color-neon-orange: #ffa764;
+        --color-neon-beige: #ebd4b3;
+        --color-neon-gray: #fefefe;
+      }
+    </style>
+  </head>
+
+  <body class="font-roboto text-center bg-gray-900 text-white">
+    <div class="chat-container flex flex-col min-h-screen">
+      <div class="chat-header text-4xl font-bold p-6 bg-gray-800 shadow-md">
+        {{ description }}
+        <img
+          src="static/custom/logo.svg"
+          class="logo w-10 h-10 ml-2 inline-block"
+        />
+      </div>
+      <button
+        id="startButton"
+        class="btn mx-auto my-6 px-6 py-3 rounded shadow-lg text-white transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-700 bg-blue-500"
+      >
+        Start Recording
+      </button>
+      <div
+        class="chat-window flex flex-col flex-grow max-h-full overflow-hidden md:max-h-3/4"
+      >
+        <div
+          id="chatHistory"
+          class="flex flex-col items-start space-y-2 overflow-y-auto p-4"
+        >
+          <!-- Chat messages will appear here -->
+        </div>
+      </div>
+      <div id="download-area" class="p-4 bg-gray-800 hidden">
+        <!-- Downloadable content or hidden if not needed -->
+      </div>
+      <div
+        class="input-area flex justify-between items-center p-4 space-x-4 bg-gray-800"
+      >
+        <input
+          type="text"
+          id="chatInput"
+          placeholder="{{ placeholder }}"
+          class="flex-grow px-4 py-3 rounded bg-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-green-700"
+        />
+        <button
+          onclick="submitMessage()"
+          class="px-6 py-3 rounded shadow-lg text-white transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-orange-700 dark:bg-neon-orange"
+          style="background-color: var(--color-neon-orange)"
+        >
+          Submit
+        </button>
+        <div class="sprite" />
+      </div>
+    </div>
+    <!-- Silero VAD -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.7/dist/bundle.min.js"></script>
+    <!-- Config -->
+    <script>
+      const WS_URL = "{{ ws_url }}";
+    </script>
+    <!-- AI Code -->
+    <script src="static/scripts/websocket.js"></script>
+    <script src="static/scripts/audio.js"></script>
+    <script src="static/scripts/ui.js"></script>
+    <script src="static/scripts/sprite.js"></script>
+  </body>
+</html>

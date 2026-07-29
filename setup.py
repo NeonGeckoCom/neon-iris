@@ -1,8 +1,9 @@
 # NEON AI (TM) SOFTWARE, Software Development Kit & Application Framework
 # All trademark and other rights reserved by their respective owners
-# Copyright 2008-2022 Neongecko.com Inc.
+# Copyright 2008-2025 Neongecko.com Inc.
 # Contributors: Daniel McKnight, Guy Daniels, Elon Gasper, Richard Leeds,
 # Regina Bloomstine, Casimiro Ferreira, Andrii Pernatii, Kirill Hrymailo
+# Mike Gray, David Scripka
 # BSD-3 License
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -35,17 +36,25 @@ BASE_PATH = path.abspath(path.dirname(__file__))
 
 
 def get_requirements(requirements_filename: str):
-    requirements_file = path.join(BASE_PATH, "requirements", requirements_filename)
-    with open(requirements_file, 'r', encoding='utf-8') as r:
+    requirements_file = path.join(
+        BASE_PATH, "requirements", requirements_filename
+    )
+    with open(requirements_file, "r", encoding="utf-8") as r:
         requirements = r.readlines()
-    requirements = [r.strip() for r in requirements if r.strip() and not r.strip().startswith("#")]
+    requirements = [
+        r.strip()
+        for r in requirements
+        if r.strip() and not r.strip().startswith("#")
+    ]
     return requirements
 
 
 with open(path.join(BASE_PATH, "README.md"), "r") as f:
     long_description = f.read()
 
-with open(path.join(BASE_PATH, "neon_iris", "version.py"), "r", encoding="utf-8") as v:
+with open(
+    path.join(BASE_PATH, "neon_iris", "version.py"), "r", encoding="utf-8"
+) as v:
     for line in v.readlines():
         if line.startswith("__version__"):
             if '"' in line:
@@ -56,9 +65,9 @@ with open(path.join(BASE_PATH, "neon_iris", "version.py"), "r", encoding="utf-8"
 setuptools.setup(
     name="neon-iris",
     version=version,
-    author='Neongecko',
-    author_email='developers@neon.ai',
-    license='BSD-3-Clause',
+    author="Neongecko",
+    author_email="developers@neon.ai",
+    license="BSD-3-Clause",
     description="Interactive Relay for Intelligence Systems",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -67,12 +76,17 @@ setuptools.setup(
     include_package_data=True,
     classifiers=[
         "Programming Language :: Python :: 3",
-        "Operating System :: OS Independent"
+        "Operating System :: OS Independent",
     ],
-    python_requires='>=3.6',
+    python_requires=">=3.7",
     install_requires=get_requirements("requirements.txt"),
-    extras_require={"gradio": get_requirements("gradio.txt")},
-    entry_points={
-        'console_scripts': ['iris=neon_iris.cli:neon_iris_cli']
-    }
+    extras_require={
+        "gradio": get_requirements("gradio.txt"),
+        "web_sat": get_requirements("web_sat.txt"),
+        "test": get_requirements("test_requirements.txt"),
+    },
+    entry_points={"console_scripts": ["iris=neon_iris.cli:neon_iris_cli"]},
+    package_data={
+        "neon_iris": ["static/*", "templates/*", "res/*", "wakeword_models/*"]
+    },
 )

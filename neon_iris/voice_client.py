@@ -1,6 +1,6 @@
 # NEON AI (TM) SOFTWARE, Software Development Kit & Application Development System
 # All trademark and other rights reserved by their respective owners
-# Copyright 2008-2021 Neongecko.com Inc.
+# Copyright 2008-2025 Neongecko.com Inc.
 # BSD-3
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -43,6 +43,7 @@ from ovos_utils.xdg_utils import xdg_data_home
 from ovos_utils.sound import play_wav
 from ovos_bus_client.message import Message
 from neon_utils.file_utils import decode_base64_string_to_file
+from neon_data_models.models.api.messagebus import NeonTtsResponse
 from neon_iris.client import NeonAIClient
 
 
@@ -111,14 +112,17 @@ class NeonVoiceClient(NeonAIClient):
         self.bus.emit(Message(msg_type, payload, context))
 
     def handle_klat_response(self, message: Message):
-        responses = message.data.get('responses')
+        response = NeonTtsResponse(msg_type=message.msg_type,
+                                   data=message.data,
+                                   context=message.context)
+        responses = response.data.responses
         for lang, data in responses.items():
-            text = data.get('sentence')
+            text = data.sentence
             LOG.info(text)
             file_basename = f"{hash(text)}.wav"
-            genders = data.get('genders', [])
+            genders = data.genders
             for gender in genders:
-                audio_data = data["audio"].get(gender)
+                audio_data = data.audio.get(gender)
                 audio_file = join(self._tts_audio_path, lang, gender,
                                   file_basename)
                 try:

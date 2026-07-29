@@ -1,21 +1,51 @@
-FROM python:3.8-slim
+FROM python:3.10-slim
 
+# Label for vendor
 LABEL vendor=neon.ai \
     ai.neon.name="neon-iris"
 
-ENV OVOS_CONFIG_BASE_FOLDER neon
-ENV OVOS_CONFIG_FILENAME neon.yaml
-ENV XDG_CONFIG_HOME /config
+# Build argument for specifying extras
+ARG EXTRAS
 
-RUN apt update && \
-    apt install -y ffmpeg
+ENV OVOS_DEFAULT_CONFIG=/opt/neon/neon.yaml \
+    OVOS_CONFIG_BASE_FOLDER=neon \
+    OVOS_CONFIG_FILENAME=neon.yaml \
+    XDG_CONFIG_HOME=/config
+# Set the ARG value as an environment variable
+ENV EXTRAS=${EXTRAS}
 
-ADD . /neon_iris
+RUN mkdir -p /neon_iris/requirements
+COPY ./requirements/* /neon_iris/requirements
+RUN apt-get update && apt-get install --no-install-recommends -y curl; rm -rf /var/lib/apt/lists/*
+RUN pip install wheel && pip install -r /neon_iris/requirements/requirements.txt
+RUN if [ "$EXTRAS" = "gradio" ]; then \
+        pip install -r /neon_iris/requirements/gradio.txt; \
+    elif [ "$EXTRAS" = "web_sat" ]; then \
+        pip install -r /neon_iris/requirements/web_sat.txt; \
+    else \
+        pip install -r /neon_iris/requirements/requirements.txt; \
+    fi
+
 WORKDIR /neon_iris
-
-RUN pip install wheel && \
-    pip install .[gradio]
+COPY . /neon_iris
+RUN pip install .
 
 COPY docker_overlay/ /
 
-CMD ["iris", "start-gradio"]
+RUN apt-get update \
+  && apt-get install -y libsndfile1 libasound2 ffmpeg \
+  && apt-get --purge autoremove -y \
+  && apt-get clean \
+  && rm -rf "${HOME}"/.cache /var/lib/apt /var/log/{apt,dpkg.log}
+
+# Create a non-root user with a home directory and change ownership of necessary directories
+
+RUN groupadd -r neon && useradd -r -m -g neon neon \
+    && mkdir -p /config/neon \
+    && chown -R neon:neon /neon_iris /usr/local/bin /config
+
+# Use the non-root user to run the container
+USER neon
+
+HEALTHCHECK CMD "/neon_iris/healthcheck.sh"
+ENTRYPOINT ["/neon_iris/entrypoint.sh"]

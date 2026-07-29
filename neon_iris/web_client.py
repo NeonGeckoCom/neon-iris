@@ -1,6 +1,6 @@
 # NEON AI (TM) SOFTWARE, Software Development Kit & Application Development System
 # All trademark and other rights reserved by their respective owners
-# Copyright 2008-2021 Neongecko.com Inc.
+# Copyright 2008-2025 Neongecko.com Inc.
 # BSD-3
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -27,9 +27,11 @@
 from os import makedirs
 from os.path import isfile, join, isdir
 from time import time
-from typing import List, Dict, Tuple
-from uuid import uuid4
+from typing import List, Dict
+from fastapi import FastAPI, Response
 
+from ovos_utils.process_utils import ProcessState
+import uvicorn
 import gradio
 
 from threading import Event
@@ -37,9 +39,9 @@ from ovos_bus_client import Message
 from ovos_config import Configuration
 from ovos_utils import LOG
 from ovos_utils.json_helper import merge_dict
-
 from neon_utils.file_utils import decode_base64_string_to_file
 from ovos_utils.xdg_utils import xdg_data_home
+from neon_data_models.models.api.messagebus import NeonTtsResponse
 
 from neon_iris.client import NeonAIClient
 
@@ -50,6 +52,7 @@ class GradIOClient(NeonAIClient):
         self.config = config.get('iris') or dict()
         NeonAIClient.__init__(self, config.get("MQ"))
         self._await_response = Event()
+        self._alerts = dict()
         self._response = None
         self._transcribed = None
         self._current_tts = dict()
@@ -57,28 +60,44 @@ class GradIOClient(NeonAIClient):
         self._audio_path = join(xdg_data_home(), "iris", "stt")
         if not isdir(self._audio_path):
             makedirs(self._audio_path)
-        self.default_lang = lang or self.config.get('default_lang')
+        self.default_lang = (lang or 
+                             self.config.get('default_lang')).split('-')[0]
         self.chat_ui = gradio.Blocks()
 
-    def get_lang(self, session_id: str):
+    def get_lang(self, session_id: str) -> str:
+        """
+        Get the ISO 639-1 language code for the specified session
+        @param session_id: Gradio session ID
+        @returns: ISO 639-1 language code
+        """
         if session_id and session_id in self._profiles:
-            return self._profiles[session_id]['speech']['stt_language']
-        return self.user_config['speech']['stt_language'] or self.default_lang
+            return self._profiles[session_id]['speech']['stt_language'].split('-')[0]
+        return (self.user_config['speech']['stt_language'] or 
+                self.default_lang).split('-')[0]
 
     @property
     def supported_languages(self) -> List[str]:
         """
         Get a list of supported languages from configuration
-        @returns: list of BCP-47 language codes
+        @returns: list of ISO 639-1 language codes
         """
-        return self.config.get('languages') or [self.default_lang]
+        return [lang.split('-')[0] for lang in 
+                self.config.get('languages') or [self.default_lang]]
 
-    def _start_session(self):
-        sid = uuid4().hex
+    def _start_session(self, request: gradio.Request):
+        sid = request.session_hash
         self._current_tts[sid] = None
         self._profiles[sid] = self.user_config
         self._profiles[sid]['user']['username'] = sid
         return sid
+
+    def check_alerts(self, session_id: str):
+        if not self._alerts.get(session_id):
+            gradio.Info("No Alerts")
+            return session_id
+        while self._alerts.get(session_id):
+            gradio.Info(self._alerts[session_id].pop())
+        return session_id
 
     def update_profile(self, stt_lang: str, tts_lang: str, tts_lang_2: str,
                        time: int, date: str, uom: str, city: str, state: str,
@@ -116,16 +135,20 @@ class GradIOClient(NeonAIClient):
         return session_id
 
     def on_user_input(self, utterance: str,
-                      chat_history: List[Tuple[str, str]],
-                      audio_input: str,
-                      client_session: str) -> (List[Tuple[str, str]], str, str, None, str):
+                      chat_history: List[gradio.ChatMessage],
+                      audio_input: str,  # gr.Audio object input
+                      client_session: str):# -> tuple[List[Tuple[str, str]], str, Literal[''], None, Any]:
         """
         Callback to handle textual user input
         @param utterance: String utterance submitted by the user
         @returns: Input box contents, Updated chat history, Gradio session ID, audio input, audio output
         """
+        if not any((utterance, audio_input)):
+            # Empty input
+            return chat_history, client_session, "", None, None
+
         input_time = time()
-        LOG.debug(f"Input received")
+        LOG.debug("Input received")
         if not self._await_response.wait(30):
             LOG.error("Previous response not completed after 30 seconds")
         in_queue = time() - input_time
@@ -148,19 +171,33 @@ class GradIOClient(NeonAIClient):
                             context={"gradio": {"session": gradio_id},
                                      "timing": {"wait_in_queue": in_queue,
                                                 "gradio_sent": time()}})
-            chat_history.append(((audio_input, None), None))
+            # Add the audio input to the chat history
+            chat_message = gradio.ChatMessage(role="user", content=audio_input)
+            chat_history.append(chat_message)
         if not self._await_response.wait(30):
             LOG.error("No response received after 30s")
             self._await_response.set()
         self._response = self._response or "ERROR"
         LOG.info(f"Got response={self._response}")
         if utterance:
-            chat_history.append((utterance, self._response))
+            chat_history.append(gradio.ChatMessage(role="user", content=utterance))
         elif isinstance(self._transcribed, str):
             LOG.info(f"Got transcript: {self._transcribed}")
-            chat_history.append((self._transcribed,  self._response))
-        chat_history.append((None, (self._current_tts[gradio_id], None)))
+            chat_history.append(gradio.ChatMessage(role="user", content=self._transcribed))
+        chat_history.append(gradio.ChatMessage(role="assistant", content=self._response))
+        # Add audio response to chat
+        chat_message = gradio.ChatMessage(role="assistant", content={"path": self._current_tts[gradio_id]})
+        chat_history.append(chat_message)
+        LOG.info(f"Chat history now has {len(chat_history)} messages")
         return chat_history, gradio_id, "", None, self._current_tts[gradio_id]
+
+    def play_tts_audio(self, session_id: str):
+        """
+        Helper method to return TTS audio for playback
+        """
+        audio_file = self._current_tts.get(session_id)
+        LOG.info(f"Playing TTS audio: {audio_file}")
+        return audio_file
 
     # def play_tts(self, session_id: str):
     #     LOG.info(f"Playing most recent TTS file {self._current_tts}")
@@ -182,22 +219,68 @@ class GradIOClient(NeonAIClient):
         port = self.config.get("server_port") or 7860
 
         with self.chat_ui as blocks:
-            client_session = gradio.State(self._start_session())
-            client_session.attach_load_event(self._start_session, None)
+            # Add custom CSS to hide audio waveforms
+            blocks.css = """
+            /* Ensure elements in a row share the same height */
+            #custom-submit {
+                height: 100%; /* Match the height of other elements */
+                display: flex;
+                align-items: center;
+            }
+
+            /* Hide the waveform container and visualization */
+            .waveform-container, #waveform, .svelte-19usgod .waveform-container {
+                display: none !important;
+            }
+            
+            /* Hide timestamps */
+            .timestamps {
+                display: none !important;
+            }
+            
+            /* Keep only essential playback controls and make them compact */
+            [data-testid="unlabelled-audio"] {
+                max-height: 60px !important;
+                overflow: hidden !important;
+            }
+            
+            /* Make the controls more compact */
+            .controls.svelte-ije4bl {
+                padding: 5px !important;
+                margin: 0 !important;
+            }
+            
+            /* Hide volume and playback speed controls to make it even more minimal */
+            .control-wrapper .volume, .control-wrapper .playback {
+                display: none !important;
+            }
+            
+            /* Hide rewind/skip buttons for minimal interface */
+            .rewind, .skip {
+                display: none !important;
+            }
+            """
+            # Do session-specific initialization
+            client_session = gradio.State()
+            blocks.load(self._start_session, None, outputs=[client_session])
+
             # Define primary UI
             blocks.title = title
-            chatbot = gradio.Chatbot(label=chatbot_label)
-            with gradio.Row():
+            chatbot = gradio.Chatbot(type='messages', label=chatbot_label)
+            with gradio.Row(height='120px'):
                 textbox = gradio.Textbox(label=text_label,
-                                         placeholder=placeholder,
+                                         placeholder=placeholder, lines=2,
                                          scale=8)
-                audio_input = gradio.Audio(source="microphone",
+                audio_input = gradio.Audio(sources=["microphone"],
                                            type="filepath",
                                            label=speech,
                                            scale=2)
-                submit = gradio.Button(value="Submit",
+                submit = gradio.Button(value="Submit", elem_id="custom-submit",
                                        variant="primary")
-            tts_audio = gradio.Audio(autoplay=True, visible=False)
+                tts_audio = gradio.Audio(autoplay=True, visible=True, 
+                                         label="Response Audio",
+                                         interactive=False,
+                                         type="filepath", scale=1)
             submit.click(self.on_user_input,
                          inputs=[textbox, chatbot, audio_input,
                                  client_session],
@@ -215,8 +298,11 @@ class GradIOClient(NeonAIClient):
             #                      outputs=[tts_audio, client_session])
             # Define settings UI
             with gradio.Row():
+                submit = gradio.Button("Update User Settings")
+                check_alerts = gradio.Button("Check for Alerts")
+            with gradio.Row():
                 with gradio.Column():
-                    lang = self.get_lang(client_session.value).split('-')[0]
+                    lang = self.get_lang(client_session.value)
                     stt_lang = gradio.Radio(label="Input Language",
                                             choices=self._languages.get("stt")
                                             or self.supported_languages,
@@ -253,14 +339,38 @@ class GradIOClient(NeonAIClient):
                     pref_name = gradio.Textbox(label="Preferred Name")
                     email_addr = gradio.Textbox(label="Email Address")
                     # TODO: DoB, pic, about, phone?
-            submit = gradio.Button("Update User Settings")
             submit.click(self.update_profile,
                          inputs=[stt_lang, tts_lang, tts_lang_2, time_format,
                                  date_format, unit_of_measure, city, state,
                                  country, first_name, middle_name, last_name,
                                  pref_name, email_addr, client_session],
                          outputs=[client_session])
-            blocks.launch(server_name=address, server_port=port)
+            check_alerts.click(self.check_alerts, inputs=[client_session],
+                               outputs=[client_session])
+            app = FastAPI()
+
+            def _health_check(*_):
+                if not self.connection.check_health():
+                    return Response(status_code=500, content="MQ Error")
+
+                if self.connection.status.state == ProcessState.ALIVE:
+                    # Startup
+                    return Response(status_code=503, content="Starting")
+                if self.connection.status.state == ProcessState.STOPPING:
+                    # Shutdown
+                    return Response(status_code=503, content="Stopping")
+                if self.connection.status.state == ProcessState.ERROR:
+                    # Error
+                    return Response(status_code=500, content="Error")
+                if self.connection.status.state == ProcessState.READY:
+                    return Response(status_code=200, content="Ready")
+
+                # Catch-all exception case
+                return Response(status_code=500, content="Error")
+
+            app.add_route("/status", _health_check, methods=["GET"])
+            gr_app = gradio.mount_gradio_app(app, blocks, '')
+            uvicorn.run(gr_app, host=address, port=port)
 
     def handle_klat_response(self, message: Message):
         """
@@ -268,17 +378,24 @@ class GradIOClient(NeonAIClient):
         audio in all requested languages.
         @param message: Neon response message
         """
-        LOG.debug(f"gradio context={message.context['gradio']}")
-        resp_data = message.data["responses"]
+        response = NeonTtsResponse(msg_type=message.msg_type,
+                                   data=message.data,
+                                   context=message.context)
+        LOG.debug(f"gradio context={response.context.gradio}")
+        resp_data = response.data.responses
         files = []
         sentences = []
-        session = message.context['gradio']['session']
+        session = response.context.gradio.session
+        LOG.info(f"Got response for session {session}")
         for lang, response in resp_data.items():
-            sentences.append(response.get("sentence"))
-            if response.get("audio"):
-                for gender, data in response["audio"].items():
+            LOG.debug(f"Response for {lang}: {response}")
+            sentences.append(response.sentence)
+            if response.audio:
+                for gender, data in response.audio.items():
+                    audio_path = getattr(response, gender)
+                    LOG.debug(f"Got audio file: {audio_path}")
                     filepath = "/".join([self.audio_cache_dir] +
-                                        response[gender].split('/')[-4:])
+                                        audio_path.split('/')[-4:])
                     # TODO: This only plays the most recent, so it doesn't
                     #  support multiple languages or multi-utterance responses
                     self._current_tts[session] = filepath
@@ -306,6 +423,17 @@ class GradIOClient(NeonAIClient):
         LOG.debug(f"Got {message.msg_type}: {message.data}")
         if message.msg_type == "neon.audio_input.response":
             self._transcribed = message.data.get("transcripts", [""])[0]
+
+    def handle_alert(self, message: Message):
+        """
+        Handle an expired alert that was previously set by this session.
+        @param message: neon.alert_expired Message
+        """
+        user = message.context['username']
+        LOG.info(f"Alert expired for user: {user}")
+        alert = f"Alert Expired: {message.data.get('alert_name')}"
+        self._alerts.setdefault(user, list())
+        self._alerts[user].append(alert)
 
     def _handle_profile_update(self, message: Message):
         updated_profile = message.data["profile"]

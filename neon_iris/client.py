@@ -1,6 +1,6 @@
 # NEON AI (TM) SOFTWARE, Software Development Kit & Application Development System
 # All trademark and other rights reserved by their respective owners
-# Copyright 2008-2021 Neongecko.com Inc.
+# Copyright 2008-2025 Neongecko.com Inc.
 # BSD-3
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -39,10 +39,10 @@ from typing import Optional
 from uuid import uuid4
 from ovos_bus_client.message import Message
 from ovos_utils.json_helper import merge_dict
-from pika.exceptions import StreamLostError
+from pika.exceptions import ConnectionWrongStateError
+from neon_iris.mq_connector import IrisConnector
 from neon_utils.configuration_utils import get_neon_user_config
 from neon_utils.metrics_utils import Stopwatch
-from neon_utils.mq_utils import NeonMQHandler
 from neon_utils.socket_utils import b64_to_dict
 from neon_utils.file_utils import decode_base64_string_to_file, \
     encode_file_to_base64_string
@@ -107,21 +107,10 @@ class NeonAIClient:
         return json.loads(json.dumps(self._user_config.content))
 
     @property
-    def connection(self) -> NeonMQHandler:
+    def connection(self) -> IrisConnector:
         """
         Returns a connected NeonMQHandler object
         """
-        if not self._connection.connection.is_open:
-            LOG.warning("Connection closed")
-            self._connection.stop()
-            self._connection = self._init_mq_connection()
-        try:
-            self._connection.connection.channel()
-        except StreamLostError:
-            LOG.warning("Connection unexpectedly closed, recreating")
-            self._connection.stop()
-            self._connection = self._init_mq_connection()
-
         return self._connection
 
     def shutdown(self):
@@ -129,7 +118,8 @@ class NeonAIClient:
         Cleanly shuts down the MQ connection associated with this client
         """
         try:
-            self._connection.stop()
+            self._connection.shutdown()
+            LOG.info("Shut down Connection")
         except Exception as e:
             LOG.error(e)
             try:
@@ -142,6 +132,7 @@ class NeonAIClient:
             except Exception as x:
                 LOG.exception(x)
                 LOG.error("Consumers not shutdown")
+            raise e
 
     def handle_neon_response(self, channel, method, _, body):
         """
@@ -152,18 +143,20 @@ class NeonAIClient:
         with _stopwatch:
             response = b64_to_dict(body)
         LOG.debug(f"Message deserialized in {_stopwatch.time}s")
+        # TODO: This should extend NeonApiMessage once that class is extended
+        # to include all of the below `msg_type`s
         message = Message(response.get('msg_type'), response.get('data'),
                           response.get('context'))
 
         # Get timing data and log
         message.context.setdefault("timing", {})
-        resp_time = message.context['timing'].get('response_sent', recv_time)
+        resp_time = message.context['timing'].get('response_sent') or recv_time
         if recv_time != resp_time:
             transit_time = recv_time - resp_time
             message.context['timing']['client_from_core'] = transit_time
             LOG.debug(f"Response MQ transit time={transit_time}")
-        handling_time = recv_time - message.context['timing'].get('client_sent',
-                                                                  recv_time)
+        handling_time = recv_time - (message.context['timing'].get(
+            'client_sent') or recv_time)
         LOG.info(f"{message.msg_type} handled in {handling_time}")
         LOG.debug(f"{pformat(message.context['timing'])}")
         if message.msg_type == "klat.response":
@@ -179,6 +172,8 @@ class NeonAIClient:
             self.handle_error_response(message)
         elif message.msg_type == "neon.languages.get.response":
             self._handle_supported_languages(message)
+        elif message.msg_type == "neon.alert_expired":
+            self.handle_alert(message)
         elif message.msg_type.endswith(".response"):
             self.handle_api_response(message)
         else:
@@ -231,6 +226,12 @@ class NeonAIClient:
         Override this method to handle requests to clear media (photos, etc)
         """
 
+    @abstractmethod
+    def handle_alert(self, message: Message):
+        """
+        Override this method to handle alerts (timers, alarms, reminders)
+        """
+
     def _handle_profile_update(self, message: Message):
         updated_profile = message.data["profile"]
         if updated_profile['user']['username'] == \
@@ -267,32 +268,36 @@ class NeonAIClient:
         self._languages = message.data
         if not all((x in self._languages for x in ("stt", "tts"))):
             LOG.warning(f"Language support incomplete response: {self._languages}")
+        self._languages['stt'] = [l.split('-')[0] 
+                                  for l in self._languages.get('stt', [])]
+        self._languages['tts'] = [l.split('-')[0] 
+                                  for l in self._languages.get('tts', [])]
         self._languages['stt'].sort()
         self._languages['tts'].sort()
         self._language_init.set()
 
-    def send_utterance(self, utterance: str, lang: str = "en-us",
+    def send_utterance(self, utterance: str, lang: str = "en",
                        username: Optional[str] = None,
                        user_profiles: Optional[list] = None,
                        context: Optional[dict] = None):
         """
         Optionally override this to queue text inputs or do any pre-parsing
         :param utterance: utterance to submit to skills module
-        :param lang: language code associated with request
+        :param lang: ISO 639-1 language code associated with request
         :param username: username associated with request
         :param user_profiles: user profiles expecting a response
         :param context: Optional dict context to add to emitted message
         """
         self._send_utterance(utterance, lang, username, user_profiles, context)
 
-    def send_audio(self, audio_file: str, lang: str = "en-us",
+    def send_audio(self, audio_file: str, lang: str = "en",
                    username: Optional[str] = None,
                    user_profiles: Optional[list] = None,
                    context: Optional[dict] = None):
         """
         Optionally override this to queue audio inputs or do any pre-parsing
         :param audio_file: path to audio file to send to speech module
-        :param lang: language code associated with request
+        :param lang: ISO 639-1 language code associated with request
         :param username: username associated with request
         :param user_profiles: user profiles expecting a response
         :param context: Optional dict context to add to emitted message
@@ -333,7 +338,7 @@ class NeonAIClient:
         self._send_serialized_message(serialized)
 
     def _send_audio(self, audio_file: str, lang: str,
-                    username: str, user_profiles: list,
+                    username: Optional[str], user_profiles: Optional[list],
                     context: Optional[dict] = None):
         context = context or dict()
         audio_data = encode_file_to_base64_string(audio_file)
@@ -367,13 +372,21 @@ class NeonAIClient:
                 queue="neon_chat_api_request",
                 request_data=serialized)
             LOG.debug(f"emitted {serialized.get('msg_type')}")
-        except Exception as e:
-            LOG.exception(e)
+        except ConnectionWrongStateError:
+            LOG.error("Restarting RMQ client and retrying")
             self.shutdown()
+            self._connection = self._init_mq_connection()
+            self.connection.emit_mq_message(
+                self._connection.connection,
+                queue="neon_chat_api_request",
+                request_data=serialized)
+        except Exception as e:
+            self.shutdown()
+            raise e
 
     def _init_mq_connection(self):
         mq_config = self._config.get("MQ") or self._config
-        mq_connection = NeonMQHandler(mq_config, "mq_handler", self._vhost)
+        mq_connection = IrisConnector(vhost=self._vhost, config=mq_config)
         mq_connection.register_consumer("neon_response_handler", self._vhost,
                                         self.uid, self.handle_neon_response,
                                         auto_ack=False)
@@ -381,7 +394,8 @@ class NeonAIClient:
                                         "neon_chat_api_error",
                                         self.handle_neon_error,
                                         auto_ack=False)
-        mq_connection.run(daemon=True)
+        mq_connection.start()
+        mq_connection.wait_for_connection()
         return mq_connection
 
 
@@ -469,15 +483,18 @@ class CLIClient(NeonAIClient):
     def clear_caches(self, message: Message):
         print("Cached Responses Cleared")
 
+    def handle_alert(self, message: Message):
+        print(f"\nAlert Expired: {message.data.get('alert_name')}")
+
     def clear_media(self, message: Message):
         pass
 
-    def send_utterance(self, utterance: str, lang: str = "en-us",
+    def send_utterance(self, utterance: str, lang: str = "en",
                        _=None, __=None):
         """
         Queue a string request for skills processing
         :param utterance: User utterance to submit
-        :param lang: language of utterance
+        :param lang: ISO 639-1 language of utterance
         """
         self._response_event.clear()
         self._request_queue.put((utterance, lang))
@@ -486,12 +503,12 @@ class CLIClient(NeonAIClient):
         while not self._request_queue.empty():
             self._response_event.wait(30)
 
-    def send_audio(self, audio_file: str, lang: str = "en-us",
+    def send_audio(self, audio_file: str, lang: str = "en",
                    _=None, __=None):
         """
         Send an audio file for skills processing
         :param audio_file: Audio File to submit for STT processing
-        :param lang: language of audio
+        :param lang: ISO 639-1 language of audio
         """
         self._response_event.clear()
         self._send_audio(audio_file, lang, self.username, self.user_profiles)

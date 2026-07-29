@@ -1,9 +1,7 @@
-# NEON AI (TM) SOFTWARE, Software Development Kit & Application Framework
+# NEON AI (TM) SOFTWARE, Software Development Kit & Application Development System
 # All trademark and other rights reserved by their respective owners
 # Copyright 2008-2025 Neongecko.com Inc.
-# Contributors: Daniel McKnight, Guy Daniels, Elon Gasper, Richard Leeds,
-# Regina Bloomstine, Casimiro Ferreira, Andrii Pernatii, Kirill Hrymailo
-# BSD-3 License
+# BSD-3
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 # 1. Redistributions of source code must retain the above copyright notice,
@@ -26,20 +24,4 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE,  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from neon_mq_connector.utils.client_utils import send_mq_request
-
-
-class LLMConversation:
-    def __init__(self, llm: str = "chat_gpt"):
-        self.history = list()
-        self.queue = f"{llm}_input"
-
-    def get_response(self, query: str):
-        resp = send_mq_request("/llm", {'query': query,
-                                        'history': self.history}, self.queue,
-                               timeout=90)
-        reply = resp.get("response") or ""
-        if reply:
-            self.history.append(("user", query))
-            self.history.append(("llm", reply))
-        return reply
+from .web_sat import UserInput, UserInputResponse  # noqa

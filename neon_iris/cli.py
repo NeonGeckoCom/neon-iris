@@ -1,6 +1,6 @@
 # NEON AI (TM) SOFTWARE, Software Development Kit & Application Development System
 # All trademark and other rights reserved by their respective owners
-# Copyright 2008-2021 Neongecko.com Inc.
+# Copyright 2008-2025 Neongecko.com Inc.
 # BSD-3
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -138,6 +138,19 @@ def start_gradio():
         click.echo("Unable to connect to MQ server")
 
 
+@neon_iris_cli.command(help="Create a Web Voice Satellite session")
+@click.option("--port", "-p", default=8000, help="Port to run on, defaults to 8000")
+@click.option("--host", default="0.0.0.0", help="Host to run on, defaults to 0.0.0.0")
+def start_websat(port, host):
+    from neon_iris.web_sat_client import app
+    _print_config()
+    try:
+        import uvicorn
+        uvicorn.run(app, host=host, port=port)
+    except OSError:
+        click.echo("Unable to connect to MQ server")
+
+
 @neon_iris_cli.command(help="Query Neon Core for supported languages")
 def get_languages():
     from neon_iris.util import query_neon
@@ -232,6 +245,23 @@ def get_wolfram_response(api, unit, latitude, longitude, question):
              "latlong": f"{latitude},{longitude}",
              "query": question,
              "service": "wolfram_alpha"}
+    resp = query_api(query)
+    click.echo(pformat(resp))
+
+
+@neon_iris_cli.command(help="Query Map Maker Geolocation endpoint")
+@click.option('--latitude', '--lat',
+              help="location latitude")
+@click.option('--longitude', '--lon',
+              help="location latitude")
+@click.option('--query', '-q', help="Name of location to look up")
+def get_mapmaker_response(latitude, longitude, query):
+    from neon_iris.util import query_api
+    _print_config()
+    query = {"lat": latitude,
+             "lon": longitude,
+             "address": query,
+             "service": "map_maker"}
     resp = query_api(query)
     click.echo(pformat(resp))
 
